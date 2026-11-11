@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#101820">
+    <title>Hotel Empire 3D</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="game-container">
+
+        <div id="loading-screen">
+            <h1>HOTEL EMPIRE</h1>
+            <p>Preparing your hotel...</p>
+        </div>
+
+        <div id="game-ui">
+
+            <header class="top-bar">
+                <div class="brand">HOTEL EMPIRE</div>
+
+                <div class="resources">
+                    <div class="resource">🪙 <span id="coins">5000</span></div>
+                    <div class="resource">💎 <span id="gems">50</span></div>
+                </div>
+            </header>
+
+            <div class="hotel-info">
+                <h2 id="hotel-name">Grand Palace Hotel</h2>
+                <p>⭐ Level 1 Hotel</p>
+            </div>
+
+            <div id="game-canvas"></div>
+
+            <div class="bottom-panel">
+                <button onclick="Game.openMenu('rooms')">🛏️ Rooms</button>
+                <button onclick="Game.openMenu('staff')">👨‍💼 Staff</button>
+                <button onclick="Game.openMenu('upgrade')">⬆️ Upgrade</button>
+                <button onclick="Game.openMenu('shop')">🛒 Shop</button>
+            </div>
+
+            <div id="menu-panel" class="hidden">
+                <button id="close-menu" onclick="Game.closeMenu()">✕</button>
+                <h2 id="menu-title">Hotel Menu</h2>
+                <div id="menu-content"></div>
+            </div>
+
+        </div>
+    </div>
+
+    <script type="module" src="game.js"></script>
+
+</body>
+  </html>
+  
