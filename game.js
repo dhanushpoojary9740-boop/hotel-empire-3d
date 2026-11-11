@@ -881,8 +881,11 @@ const Game = {
         this.interiorMode = true;
         this.currentView = 'room';
         this.interiorRotation = 0;
-        this.interiorPitch = 0.02;
-        this.interiorDistance = 12;
+
+        // CORRECTED ROOM CAMERA
+        this.interiorPitch = 0.28;
+        this.interiorDistance = 15.5;
+
         this.activePointers.clear();
         this.pinchDistance = 0;
         this.updateCamera();
@@ -985,7 +988,7 @@ const Game = {
     updateCamera() {
         if (this.interiorMode) {
             const target = this.currentView === 'room'
-                ? new THREE.Vector3(0, 2.5, -0.5)
+                ? new THREE.Vector3(0, 2.7, 0)
                 : new THREE.Vector3(0, 3.5, -2.5);
 
             const distance = this.interiorDistance;
@@ -1098,8 +1101,8 @@ const Game = {
         if (this.interiorMode) {
             this.interiorDistance = THREE.MathUtils.clamp(
                 this.interiorDistance + amount,
-                this.currentView === 'room' ? 4.5 : 7,
-                this.currentView === 'room' ? 18 : 25
+                this.currentView === 'room' ? 13 : 7,
+                this.currentView === 'room' ? 21 : 25
             );
         } else {
             this.cameraDistance = THREE.MathUtils.clamp(
@@ -1221,8 +1224,8 @@ const Game = {
                         this.interiorDistance =
                             THREE.MathUtils.clamp(
                                 this.interiorDistance * ratio,
-                                this.currentView === 'room' ? 4.5 : 7,
-                                this.currentView === 'room' ? 18 : 25
+                                this.currentView === 'room' ? 13 : 7,
+                                this.currentView === 'room' ? 21 : 25
                             );
                     } else {
                         this.cameraDistance =
