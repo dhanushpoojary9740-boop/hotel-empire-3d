@@ -1,9 +1,4 @@
-
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js';
-
-// =====================================
-// HOTEL EMPIRE 3D - GAME ENGINE
-// =====================================
 
 const Game = {
 
@@ -19,23 +14,34 @@ const Game = {
     renderer: null,
     hotel: null,
 
-    touchStart: null,
-    rotation: 0,
+    rotation: 0.65,
+    cameraDistance: 30,
+    cameraMinDistance: 19,
+    cameraMaxDistance: 45,
+    cameraTarget: new THREE.Vector3(0, 3.5, 0),
+
+    dragging: false,
+    lastPointerX: 0,
 
     init() {
+
         this.loadGame();
+
         this.createWorld();
         this.createHotel();
         this.createGarden();
         this.createPool();
         this.setupLighting();
         this.setupControls();
+        this.updateCamera();
         this.updateUI();
         this.animate();
 
-        const loading = document.getElementById('loading-screen');
+        const loading =
+            document.getElementById('loading-screen');
 
         setTimeout(() => {
+
             loading.style.opacity = '0';
 
             setTimeout(() => {
@@ -45,34 +51,33 @@ const Game = {
         }, 700);
     },
 
-    // =====================================
-    // CREATE 3D WORLD
-    // =====================================
+    // =================================
+    // 3D WORLD
+    // =================================
 
     createWorld() {
 
-        const container = document.getElementById('game-canvas');
+        const container =
+            document.getElementById('game-canvas');
 
         this.scene = new THREE.Scene();
 
-        this.scene.background = new THREE.Color(0x9eb7c7);
+        this.scene.background =
+            new THREE.Color(0x9eb7c7);
 
         this.scene.fog = new THREE.Fog(
             0x9eb7c7,
-            25,
-            85
+            35,
+            100
         );
 
         this.camera = new THREE.PerspectiveCamera(
-            42,
-            container.clientWidth / container.clientHeight,
+            38,
+            container.clientWidth /
+            container.clientHeight,
             0.1,
             200
         );
-
-        this.camera.position.set(13, 11, 17);
-
-        this.camera.lookAt(0, 3, 0);
 
         this.renderer = new THREE.WebGLRenderer({
             antialias: true,
@@ -105,19 +110,12 @@ const Game = {
 
         // Ground
 
-        const groundGeometry = new THREE.PlaneGeometry(
-            100,
-            100
-        );
-
-        const groundMaterial = new THREE.MeshStandardMaterial({
-            color: 0x526d4e,
-            roughness: 1
-        });
-
         const ground = new THREE.Mesh(
-            groundGeometry,
-            groundMaterial
+            new THREE.PlaneGeometry(100, 100),
+            new THREE.MeshStandardMaterial({
+                color: 0x526d4e,
+                roughness: 1
+            })
         );
 
         ground.rotation.x = -Math.PI / 2;
@@ -135,9 +133,9 @@ const Game = {
         );
     },
 
-    // =====================================
-    // BASIC 3D OBJECT CREATOR
-    // =====================================
+    // =================================
+    // 3D BOX CREATOR
+    // =================================
 
     box(x, y, z, width, height, depth, color, options = {}) {
 
@@ -148,7 +146,7 @@ const Game = {
         );
 
         const material = new THREE.MeshStandardMaterial({
-            color,
+            color: color,
             roughness: options.roughness ?? 0.75,
             metalness: options.metalness ?? 0
         });
@@ -168,17 +166,15 @@ const Game = {
         return object;
     },
 
-    // =====================================
-    // CREATE HOTEL BUILDING
-    // =====================================
+    // =================================
+    // HOTEL BUILDING
+    // =================================
 
     createHotel() {
 
         this.hotel = new THREE.Group();
 
         this.scene.add(this.hotel);
-
-        // Main building
 
         const building = new THREE.Mesh(
             new THREE.BoxGeometry(8, 8, 5),
@@ -194,7 +190,7 @@ const Game = {
 
         this.hotel.add(building);
 
-        // Floor separation lines
+        // Floor separation
 
         for (let floor = 1; floor <= 3; floor++) {
 
@@ -205,12 +201,16 @@ const Game = {
                 })
             );
 
-            line.position.set(0, floor * 2 + 0.25, 0);
+            line.position.set(
+                0,
+                floor * 2 + 0.25,
+                0
+            );
 
             this.hotel.add(line);
         }
 
-        // Windows
+        // Front windows
 
         for (let floor = 0; floor < 4; floor++) {
 
@@ -235,8 +235,6 @@ const Game = {
 
                 this.hotel.add(windowMesh);
 
-                // Window frames
-
                 const frame = new THREE.Mesh(
                     new THREE.BoxGeometry(1.22, 1.27, 0.07),
                     new THREE.MeshStandardMaterial({
@@ -259,51 +257,72 @@ const Game = {
 
         // Roof
 
-        this.box(
-            0, 8.45, 0,
-            8.5, 0.4, 5.5,
-            0x59483c
+        const roof = new THREE.Mesh(
+            new THREE.BoxGeometry(8.5, 0.4, 5.5),
+            new THREE.MeshStandardMaterial({
+                color: 0x59483c
+            })
         );
+
+        roof.position.set(0, 8.45, 0);
+        this.hotel.add(roof);
 
         // Main entrance
 
-        this.box(
-            0, 1.15, 2.58,
-            2.1, 2.3, 0.25,
-            0x563b2b
+        const entrance = new THREE.Mesh(
+            new THREE.BoxGeometry(2.1, 2.3, 0.25),
+            new THREE.MeshStandardMaterial({
+                color: 0x563b2b
+            })
         );
 
-        // Entrance glass door
+        entrance.position.set(0, 1.15, 2.58);
+        this.hotel.add(entrance);
 
-        this.box(
-            0, 1.1, 2.75,
-            1.2, 2, 0.08,
-            0x80b7c7,
-            { metalness: 0.5, roughness: 0.2 }
+        // Glass door
+
+        const door = new THREE.Mesh(
+            new THREE.BoxGeometry(1.2, 2, 0.08),
+            new THREE.MeshStandardMaterial({
+                color: 0x80b7c7,
+                metalness: 0.5,
+                roughness: 0.2
+            })
         );
 
-        // Golden entrance pillars
+        door.position.set(0, 1.1, 2.75);
+        this.hotel.add(door);
+
+        // Golden pillars
 
         for (const x of [-1.35, 1.35]) {
 
-            this.box(
-                x, 1.5, 2.65,
-                0.18, 3, 0.18,
-                0xc59a53,
-                { metalness: 0.6 }
+            const pillar = new THREE.Mesh(
+                new THREE.BoxGeometry(0.18, 3, 0.18),
+                new THREE.MeshStandardMaterial({
+                    color: 0xc59a53,
+                    metalness: 0.6
+                })
             );
+
+            pillar.position.set(x, 1.5, 2.65);
+            this.hotel.add(pillar);
         }
 
         // Hotel sign
 
-        this.box(
-            0, 3.2, 2.7,
-            3, 0.45, 0.12,
-            0xc59a53,
-            { metalness: 0.5 }
+        const sign = new THREE.Mesh(
+            new THREE.BoxGeometry(3, 0.45, 0.12),
+            new THREE.MeshStandardMaterial({
+                color: 0xc59a53,
+                metalness: 0.5
+            })
         );
 
-        // Front steps
+        sign.position.set(0, 3.2, 2.7);
+        this.hotel.add(sign);
+
+        // Entrance steps
 
         this.box(
             0, 0.35, 3.3,
@@ -323,22 +342,29 @@ const Game = {
 
             for (const side of [-1, 1]) {
 
-                this.box(
+                const windowMesh = new THREE.Mesh(
+                    new THREE.BoxGeometry(
+                        0.08, 1.1, 1.1
+                    ),
+                    new THREE.MeshStandardMaterial({
+                        color: 0x456f87
+                    })
+                );
+
+                windowMesh.position.set(
                     side * 4.04,
                     1.3 + floor * 2,
-                    0,
-                    0.08,
-                    1.1,
-                    1.1,
-                    0x456f87
+                    0
                 );
+
+                this.hotel.add(windowMesh);
             }
         }
     },
 
-    // =====================================
-    // GARDEN AND TREES
-    // =====================================
+    // =================================
+    // GARDEN
+    // =================================
 
     createGarden() {
 
@@ -352,8 +378,6 @@ const Game = {
         ];
 
         positions.forEach(([x, z]) => {
-
-            // Tree trunk
 
             const trunk = new THREE.Mesh(
                 new THREE.CylinderGeometry(
@@ -369,8 +393,6 @@ const Game = {
 
             this.scene.add(trunk);
 
-            // Tree leaves
-
             const leaves = new THREE.Mesh(
                 new THREE.SphereGeometry(1.15, 10, 8),
                 new THREE.MeshStandardMaterial({
@@ -385,8 +407,6 @@ const Game = {
             this.scene.add(leaves);
         });
 
-        // Garden grass patches
-
         this.box(
             -5, 0.04, 0,
             2, 0.1, 5,
@@ -400,21 +420,17 @@ const Game = {
         );
     },
 
-    // =====================================
+    // =================================
     // SWIMMING POOL
-    // =====================================
+    // =================================
 
     createPool() {
-
-        // Pool border
 
         this.box(
             -4.3, 0.16, -5.3,
             4.2, 0.25, 3.2,
             0xe5d8c0
         );
-
-        // Water
 
         const water = new THREE.Mesh(
             new THREE.BoxGeometry(3.8, 0.08, 2.8),
@@ -429,25 +445,21 @@ const Game = {
 
         this.scene.add(water);
 
-        // Poolside lounge chairs
-
         for (let i = 0; i < 2; i++) {
 
             this.box(
                 -7 + i * 1.2,
                 0.35,
                 -2.7,
-                0.8,
-                0.15,
-                1.5,
+                0.8, 0.15, 1.5,
                 0xd9c59f
             );
         }
     },
 
-    // =====================================
+    // =================================
     // LIGHTING
-    // =====================================
+    // =================================
 
     setupLighting() {
 
@@ -478,76 +490,129 @@ const Game = {
         this.scene.add(sunlight);
     },
 
-    // =====================================
-    // CAMERA TOUCH CONTROLS
-    // =====================================
+    // =================================
+    // CAMERA POSITION
+    // =================================
+
+    updateCamera() {
+
+        const horizontal = this.cameraDistance;
+
+        this.camera.position.set(
+            Math.sin(this.rotation) * horizontal,
+            3.5 + horizontal * 0.38,
+            Math.cos(this.rotation) * horizontal
+        );
+
+        this.camera.lookAt(this.cameraTarget);
+    },
+
+    // =================================
+    // CAMERA CONTROLS
+    // =================================
 
     setupControls() {
 
         const canvas = this.renderer.domElement;
 
-        canvas.addEventListener('pointerdown', (event) => {
+        canvas.style.touchAction = 'none';
 
-            this.touchStart = {
-                x: event.clientX,
-                y: event.clientY
-            };
+        canvas.addEventListener(
+            'pointerdown',
+            (event) => {
 
-        });
+                this.dragging = true;
+                this.lastPointerX = event.clientX;
 
-        canvas.addEventListener('pointermove', (event) => {
+                canvas.setPointerCapture(event.pointerId);
+            }
+        );
 
-            if (!this.touchStart) return;
+        canvas.addEventListener(
+            'pointermove',
+            (event) => {
 
-            const deltaX =
-                event.clientX - this.touchStart.x;
+                if (!this.dragging) return;
 
-            this.rotation += deltaX * 0.008;
+                const deltaX =
+                    event.clientX - this.lastPointerX;
 
-            this.touchStart = {
-                x: event.clientX,
-                y: event.clientY
-            };
+                this.rotation += deltaX * 0.006;
 
-            const distance = 21;
+                this.lastPointerX = event.clientX;
 
-            this.camera.position.x =
-                Math.sin(this.rotation) * distance;
+                this.updateCamera();
+            }
+        );
 
-            this.camera.position.z =
-                Math.cos(this.rotation) * distance;
-
-            this.camera.lookAt(0, 3, 0);
-
-        });
-
-        const stopTouch = () => {
-            this.touchStart = null;
+        const stopDragging = () => {
+            this.dragging = false;
         };
 
-        canvas.addEventListener('pointerup', stopTouch);
-        canvas.addEventListener('pointercancel', stopTouch);
+        canvas.addEventListener(
+            'pointerup',
+            stopDragging
+        );
 
-        window.addEventListener('resize', () => {
+        canvas.addEventListener(
+            'pointercancel',
+            stopDragging
+        );
 
-            const container =
-                document.getElementById('game-canvas');
+        canvas.addEventListener(
+            'lostpointercapture',
+            stopDragging
+        );
 
-            this.camera.aspect =
-                container.clientWidth / container.clientHeight;
+        // Mouse wheel zoom
 
-            this.camera.updateProjectionMatrix();
+        canvas.addEventListener(
+            'wheel',
+            (event) => {
 
-            this.renderer.setSize(
-                container.clientWidth,
-                container.clientHeight
-            );
-        });
+                event.preventDefault();
+
+                this.cameraDistance +=
+                    event.deltaY * 0.025;
+
+                this.cameraDistance = THREE.MathUtils.clamp(
+                    this.cameraDistance,
+                    this.cameraMinDistance,
+                    this.cameraMaxDistance
+                );
+
+                this.updateCamera();
+
+            },
+            { passive: false }
+        );
+
+        // Screen resize
+
+        window.addEventListener(
+            'resize',
+            () => {
+
+                const container =
+                    document.getElementById('game-canvas');
+
+                this.camera.aspect =
+                    container.clientWidth /
+                    container.clientHeight;
+
+                this.camera.updateProjectionMatrix();
+
+                this.renderer.setSize(
+                    container.clientWidth,
+                    container.clientHeight
+                );
+            }
+        );
     },
 
-    // =====================================
+    // =================================
     // GAME ANIMATION
-    // =====================================
+    // =================================
 
     animate() {
 
@@ -559,9 +624,9 @@ const Game = {
         );
     },
 
-    // =====================================
-    // USER INTERFACE
-    // =====================================
+    // =================================
+    // GAME UI
+    // =================================
 
     updateUI() {
 
@@ -631,7 +696,6 @@ const Game = {
                     <p>Premium shop will be developed later.</p>
                 `
             }
-
         };
 
         title.textContent = menus[type].title;
@@ -644,9 +708,9 @@ const Game = {
             .classList.add('hidden');
     },
 
-    // =====================================
-    // HOTEL BUSINESS FUNCTIONS
-    // =====================================
+    // =================================
+    // BUSINESS FUNCTIONS
+    // =================================
 
     upgradeRoom() {
 
@@ -693,9 +757,9 @@ const Game = {
         this.openMenu('upgrade');
     },
 
-    // =====================================
+    // =================================
     // OFFLINE SAVE SYSTEM
-    // =====================================
+    // =================================
 
     saveGame() {
 
@@ -736,14 +800,16 @@ const Game = {
 
         } catch (error) {
 
-            console.error('Save data error:', error);
-
+            console.error(
+                'Save data error:',
+                error
+            );
         }
     }
 
 };
 
-// Make game functions accessible to HTML buttons
+// Global access for HTML buttons
 
 window.Game = Game;
 
