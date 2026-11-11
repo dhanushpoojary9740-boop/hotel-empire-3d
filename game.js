@@ -12,15 +12,14 @@ const Game = {
     camera: null,
     renderer: null,
     hotel: null,
+    exterior: null,
     interior: null,
     interiorMode: false,
 
     rotation: 0.55,
-    cameraDistance: 44,
+    cameraDistance: 52,
     dragging: false,
     lastPointerX: 0,
-
-    cameraTarget: new THREE.Vector3(0, 9, 0),
 
     init() {
         this.loadGame();
@@ -48,8 +47,6 @@ const Game = {
         }
     },
 
-    // MATERIAL AND BOX SYSTEM
-
     material(color, options = {}) {
         return new THREE.MeshStandardMaterial({
             color,
@@ -73,9 +70,7 @@ const Game = {
 
     cylinder(parent, x, y, z, radius, height, color) {
         const mesh = new THREE.Mesh(
-            new THREE.CylinderGeometry(
-                radius, radius, height, 20
-            ),
+            new THREE.CylinderGeometry(radius, radius, height, 20),
             this.material(color)
         );
 
@@ -148,16 +143,12 @@ const Game = {
         ground.receiveShadow = true;
         this.exterior.add(ground);
 
-        // Large hotel property platform
-
         this.box(
             this.exterior,
             0, 0.05, 0,
             30, 0.5, 26,
             0x898985
         );
-
-        // Driveway
 
         this.box(
             this.exterior,
@@ -167,7 +158,7 @@ const Game = {
         );
     },
 
-    // HOTEL WINDOW
+    // WINDOWS
 
     addFrontWindow(parent, x, y, z, width = 1.15) {
         this.box(
@@ -186,15 +177,13 @@ const Game = {
         this.box(
             parent, x, y, z + 0.13,
             0.045, 1.1, 0.035,
-            0xc5a267,
-            { metalness: 0.55 }
+            0xc5a267
         );
 
         this.box(
             parent, x, y, z + 0.13,
             width - 0.12, 0.045, 0.035,
-            0xc5a267,
-            { metalness: 0.55 }
+            0xc5a267
         );
     },
 
@@ -207,15 +196,12 @@ const Game = {
 
         this.box(
             parent,
-            x + side * 0.09,
-            y, z,
+            x + side * 0.09, y, z,
             0.045, 1.13, 1.13,
             0x28536a,
             { metalness: 0.45, roughness: 0.2 }
         );
     },
-
-    // BALCONY
 
     addBalcony(parent, x, y, z) {
         this.box(
@@ -240,17 +226,14 @@ const Game = {
 
         for (const offset of [-0.85, 0.85]) {
             this.box(
-                parent,
-                x + offset,
-                y - 0.15,
-                z + 1.3,
+                parent, x + offset, y - 0.15, z + 1.3,
                 0.08, 0.82, 0.12,
                 0xc6a05e
             );
         }
     },
 
-    // MASSIVE HOTEL
+    // HOTEL EXTERIOR
 
     createHotel() {
         this.hotel = new THREE.Group();
@@ -260,8 +243,6 @@ const Game = {
         const floorHeight = 2.25;
         const height = floors * floorHeight;
 
-        // Main tower
-
         this.box(
             this.hotel,
             0, height / 2 + 0.3, 0,
@@ -269,14 +250,10 @@ const Game = {
             0xe8dcc4
         );
 
-        // Left and right hotel wings
-
         for (const side of [-1, 1]) {
             this.box(
                 this.hotel,
-                side * 8.2,
-                6.9,
-                -0.2,
+                side * 8.2, 6.9, -0.2,
                 4, 13.2, 7.5,
                 0xd9c9aa
             );
@@ -294,20 +271,14 @@ const Game = {
             }
         }
 
-        // Floor separation lines
-
         for (let floor = 1; floor < floors; floor++) {
             this.box(
                 this.hotel,
-                0,
-                floor * floorHeight + 0.3,
-                0,
+                0, floor * floorHeight + 0.3, 0,
                 13.15, 0.12, 8.15,
                 0xb38c56
             );
         }
-
-        // Front and back windows
 
         for (let floor = 0; floor < floors; floor++) {
             const y = 1.45 + floor * floorHeight;
@@ -324,14 +295,10 @@ const Game = {
                 );
 
                 if (floor === 2 || floor === 5 || floor === 8) {
-                    this.addBalcony(
-                        this.hotel, x, y, 4.05
-                    );
+                    this.addBalcony(this.hotel, x, y, 4.05);
                 }
             }
         }
-
-        // Side windows
 
         for (let floor = 0; floor < floors; floor++) {
             const y = 1.45 + floor * floorHeight;
@@ -349,8 +316,6 @@ const Game = {
             }
         }
 
-        // Luxury rooftop
-
         this.box(
             this.hotel,
             0, height + 0.55, 0,
@@ -365,8 +330,6 @@ const Game = {
             0xc29a61
         );
 
-        // Grand entrance structure
-
         this.box(
             this.hotel,
             0, 2.1, 4.35,
@@ -379,22 +342,17 @@ const Game = {
             0, 1.8, 4.7,
             3.8, 3.2, 0.12,
             0x76afbd,
-            { metalness: 0.45, roughness: 0.2 }
+            { metalness: 0.45 }
         );
-
-        // Entrance gold pillars
 
         for (const x of [-2.8, 2.8]) {
             this.box(
                 this.hotel,
                 x, 2.2, 4.65,
                 0.3, 4.3, 0.35,
-                0xc7a05d,
-                { metalness: 0.6 }
+                0xc7a05d
             );
         }
-
-        // Grand entrance canopy
 
         this.box(
             this.hotel,
@@ -407,11 +365,8 @@ const Game = {
             this.hotel,
             0, 4.55, 5.15,
             7.3, 0.1, 2.4,
-            0xd2ad6c,
-            { metalness: 0.4 }
+            0xd2ad6c
         );
-
-        // Entrance steps
 
         for (let i = 0; i < 3; i++) {
             this.box(
@@ -420,13 +375,10 @@ const Game = {
                 0.35 + i * 0.12,
                 5.6 + i * 0.7,
                 7 + i * 0.5,
-                0.25,
-                0.8,
+                0.25, 0.8,
                 0xd0c5b2
             );
         }
-
-        // Side entrance pillars
 
         for (const x of [-5.5, 5.5]) {
             this.cylinder(
@@ -438,252 +390,409 @@ const Game = {
         }
     },
 
-    // LUXURY LOBBY INTERIOR
+    // =====================================
+    // GRAND LUXURY INTERIOR
+    // =====================================
 
     createInterior() {
         this.interior = new THREE.Group();
         this.scene.add(this.interior);
 
-        // Lobby dimensions
+        const lobby = new THREE.Group();
+        this.interior.add(lobby);
 
-        const width = 15;
-        const depth = 12;
-        const height = 8;
-
-        // Marble floor
+        // Lobby floor - large marble
 
         this.box(
-            this.interior,
+            lobby,
             0, 0, 0,
-            width, 0.25, depth,
+            20, 0.25, 16,
             0xd8d0c2,
             { roughness: 0.2, metalness: 0.12 }
         );
 
+        // Marble floor tiles
+
+        for (let x = -8; x <= 8; x += 2) {
+            this.box(
+                lobby,
+                x, 0.14, 0,
+                0.035, 0.025, 15.5,
+                0xb9a889
+            );
+        }
+
+        for (let z = -6; z <= 6; z += 2) {
+            this.box(
+                lobby,
+                0, 0.14, z,
+                19.5, 0.025, 0.035,
+                0xb9a889
+            );
+        }
+
         // Gold floor border
 
-        this.box(
-            this.interior,
-            0, 0.14, -5.65,
-            14.5, 0.06, 0.12,
-            0xc5a15e,
-            { metalness: 0.6 }
-        );
+        for (const z of [-7.5, 7.5]) {
+            this.box(
+                lobby,
+                0, 0.16, z,
+                19.5, 0.04, 0.09,
+                0xc5a15e
+            );
+        }
 
-        // Back and side walls
+        for (const x of [-9.5, 9.5]) {
+            this.box(
+                lobby,
+                x, 0.16, 0,
+                0.09, 0.04, 15,
+                0xc5a15e
+            );
+        }
+
+        // Double-height rear wall
 
         this.box(
-            this.interior,
-            0, height / 2, -6,
-            width, height, 0.3,
+            lobby,
+            0, 5, -8,
+            20, 10, 0.35,
             0x302b2a
         );
 
+        // Side walls
+
         this.box(
-            this.interior,
-            -7.5, height / 2, 0,
-            0.3, height, depth,
+            lobby,
+            -10, 5, 0,
+            0.35, 10, 16,
             0x39312d
         );
 
         this.box(
-            this.interior,
-            7.5, height / 2, 0,
-            0.3, height, depth,
+            lobby,
+            10, 5, 0,
+            0.35, 10, 16,
             0x39312d
+        );
+
+        // Ceiling
+
+        this.box(
+            lobby,
+            0, 10, 0,
+            20, 0.3, 16,
+            0x302b2a
         );
 
         // Decorative wall panels
 
-        for (let x = -5; x <= 5; x += 2.5) {
+        for (let x = -8; x <= 8; x += 2.7) {
             this.box(
-                this.interior,
-                x, 3.8, -5.78,
-                1.8, 5.5, 0.08,
+                lobby,
+                x, 5, -7.78,
+                1.9, 8.5, 0.08,
                 0x614936
             );
 
             this.box(
-                this.interior,
-                x, 3.8, -5.7,
-                0.06, 5.3, 0.05,
-                0xd0ad6b,
-                { metalness: 0.5 }
+                lobby,
+                x, 5, -7.7,
+                0.06, 8.2, 0.05,
+                0xd0ad6b
             );
         }
 
-        // Reception desk
+        // Luxury reception counter - three sections
 
-        this.box(
-            this.interior,
-            0, 1.1, -3.8,
-            6.5, 1.8, 1.3,
-            0x50372c
-        );
-
-        this.box(
-            this.interior,
-            0, 2.05, -3.8,
-            6.7, 0.15, 1.45,
-            0xc9a362,
-            { metalness: 0.55 }
-        );
-
-        // Reception front panel
-
-        this.box(
-            this.interior,
-            0, 1.1, -3.1,
-            5.8, 1.25, 0.08,
-            0x94734c
-        );
-
-        // Gold reception details
-
-        for (const x of [-2.7, 2.7]) {
+        for (const x of [-4.2, 0, 4.2]) {
             this.box(
-                this.interior,
-                x, 1.1, -3.03,
-                0.08, 1.3, 0.08,
+                lobby,
+                x, 1.15, -5,
+                3.6, 1.8, 1.25,
+                0x50372c
+            );
+
+            this.box(
+                lobby,
+                x, 2.1, -5,
+                3.8, 0.16, 1.45,
+                0xc9a362,
+                { metalness: 0.55 }
+            );
+
+            this.box(
+                lobby,
+                x, 1.15, -4.34,
+                3.3, 1.3, 0.07,
+                0x94734c
+            );
+
+            this.box(
+                lobby,
+                x, 1.15, -4.28,
+                0.05, 1.3, 0.04,
                 0xe3bd75
             );
-        }
 
-        // Reception computers
+            // Reception computer
 
-        for (const x of [-1.7, 1.7]) {
             this.box(
-                this.interior,
-                x, 2.3, -3.8,
-                0.8, 0.08, 0.55,
+                lobby,
+                x, 2.28, -5,
+                0.85, 0.08, 0.5,
                 0x202b30
             );
         }
 
-        // Luxury sofas
+        // Reception decorative flower arrangements
 
-        for (const x of [-4.5, 4.5]) {
+        for (const x of [-7, 7]) {
+            this.cylinder(
+                lobby,
+                x, 0.55, -4.5,
+                0.45, 1.1, 0x75533c
+            );
+
+            this.sphere(
+                lobby,
+                x, 1.35, -4.5,
+                0.65, 0x3c7a4b
+            );
+        }
+
+        // Luxury lounge sofas
+
+        for (const x of [-6.2, 6.2]) {
             this.box(
-                this.interior,
-                x, 0.75, 1.2,
-                3.2, 0.55, 1.25,
+                lobby,
+                x, 0.7, 1.3,
+                4, 0.55, 1.5,
                 0xb58d70
             );
 
             this.box(
-                this.interior,
-                x, 1.35, 1.55,
-                3.2, 0.9, 0.35,
+                lobby,
+                x, 1.35, 1.9,
+                4, 0.95, 0.35,
                 0x8f6a56
             );
 
-            for (const offset of [-1.35, 1.35]) {
+            for (const offset of [-1.7, 1.7]) {
                 this.box(
-                    this.interior,
-                    x + offset, 1.1, 1.2,
-                    0.35, 0.85, 1.3,
+                    lobby,
+                    x + offset, 1.05, 1.3,
+                    0.35, 0.85, 1.5,
                     0x765747
+                );
+            }
+
+            // Sofa cushions
+
+            for (const offset of [-1, 0, 1]) {
+                this.box(
+                    lobby,
+                    x + offset, 1.02, 1.25,
+                    0.85, 0.2, 1,
+                    0xd7b89a
                 );
             }
         }
 
-        // Coffee tables
+        // Central coffee tables
 
         this.box(
-            this.interior,
-            0, 0.7, 1.2,
-            2.5, 0.15, 1.2,
-            0x9c754d,
+            lobby,
+            0, 0.65, 1.3,
+            3.2, 0.15, 1.5,
+            0x9c754d
+        );
+
+        this.box(
+            lobby,
+            0, 0.75, 1.3,
+            3, 0.05, 1.3,
+            0xd2b88b,
             { metalness: 0.25 }
         );
 
-        // Decorative columns
+        // Additional lounge chairs
 
-        for (const x of [-6, -3, 3, 6]) {
+        for (const x of [-7, 7]) {
+            this.box(
+                lobby,
+                x, 0.65, 4.5,
+                1.8, 0.5, 1.7,
+                0x80614c
+            );
+
+            this.box(
+                lobby,
+                x, 1.1, 5.15,
+                1.8, 0.9, 0.3,
+                0xb58d70
+            );
+        }
+
+        // Decorative marble pillars
+
+        for (const x of [-8, -4, 4, 8]) {
             this.cylinder(
-                this.interior,
-                x, 3.8, 4.5,
-                0.3, 7.5,
+                lobby,
+                x, 5, 6,
+                0.35, 9.5,
                 0xcbb99b
             );
 
             this.cylinder(
-                this.interior,
-                x, 7.55, 4.5,
-                0.48, 0.25,
+                lobby,
+                x, 9.8, 6,
+                0.55, 0.3,
                 0xc5a15e
             );
 
             this.cylinder(
-                this.interior,
-                x, 0.25, 4.5,
-                0.48, 0.25,
+                lobby,
+                x, 0.25, 6,
+                0.55, 0.3,
                 0xc5a15e
             );
         }
 
-        // Elevators
+        // Elevator entrance
 
-        for (const x of [-5, 5]) {
+        for (const x of [-5.5, -2.5, 2.5, 5.5]) {
             this.box(
-                this.interior,
-                x, 2.3, -5.55,
-                2, 4.4, 0.15,
-                0x9b9d9b,
-                { metalness: 0.65 }
+                lobby,
+                x, 2.5, -7.55,
+                0.12, 5, 0.16,
+                0xc6a15e
+            );
+        }
+
+        for (const x of [-4, 4]) {
+            this.box(
+                lobby,
+                x, 2.5, -7.5,
+                2.6, 4.8, 0.16,
+                0x91b5c0,
+                { metalness: 0.6, roughness: 0.2 }
             );
 
             this.box(
-                this.interior,
-                x, 2.3, -5.43,
-                1.7, 4.1, 0.06,
-                0x42616c,
-                { metalness: 0.5 }
-            );
-
-            this.box(
-                this.interior,
-                x, 4.6, -5.35,
-                0.7, 0.12, 0.06,
+                lobby,
+                x, 4.95, -7.35,
+                0.8, 0.12, 0.06,
                 0xc7a15e
             );
         }
 
-        // Chandelier ceiling fixtures
+        // Crystal-style chandeliers
 
-        for (const x of [-4, 0, 4]) {
+        for (const x of [-6, 0, 6]) {
             this.cylinder(
-                this.interior,
-                x, 7.7, -0.5,
-                0.045, 0.5,
+                lobby,
+                x, 9.5, -0.5,
+                0.045, 0.9,
                 0xc5a15e
             );
 
             this.sphere(
-                this.interior,
-                x, 7.35, -0.5,
-                0.38,
+                lobby,
+                x, 8.85, -0.5,
+                0.5,
                 0xf5d58b
             );
+
+            // Chandelier hanging crystals
+
+            for (let i = 0; i < 6; i++) {
+                const angle = i * Math.PI / 3;
+
+                this.box(
+                    lobby,
+                    x + Math.cos(angle) * 0.55,
+                    8.6,
+                    -0.5 + Math.sin(angle) * 0.55,
+                    0.1, 0.45, 0.1,
+                    0xd9c5a0
+                );
+            }
         }
 
-        // Indoor plants
+        // Indoor decorative plants
 
-        for (const x of [-6.5, 6.5]) {
+        for (const x of [-8.5, 8.5]) {
             this.cylinder(
-                this.interior,
+                lobby,
                 x, 0.5, 3,
                 0.55, 1,
                 0x76523a
             );
 
             this.sphere(
-                this.interior,
+                lobby,
                 x, 1.8, 3,
-                0.85,
+                0.9,
                 0x397348
             );
+
+            this.sphere(
+                lobby,
+                x - 0.35, 2.3, 3,
+                0.55,
+                0x477d4a
+            );
+
+            this.sphere(
+                lobby,
+                x + 0.35, 2.3, 3,
+                0.55,
+                0x477d4a
+            );
         }
+
+        // Lobby feature wall artwork
+
+        this.box(
+            lobby,
+            0, 7, -7.55,
+            4.5, 2.1, 0.12,
+            0xc1a06c,
+            { metalness: 0.35 }
+        );
+
+        this.box(
+            lobby,
+            0, 7, -7.45,
+            4.1, 1.7, 0.05,
+            0x45372f
+        );
+
+        // Welcome desk flower vase
+
+        this.cylinder(
+            lobby,
+            0, 2.5, -5,
+            0.2, 0.5,
+            0x98764d
+        );
+
+        // Lobby lighting
+
+        const lobbyLight = new THREE.PointLight(
+            0xffd69a, 55, 35
+        );
+
+        lobbyLight.position.set(0, 8.5, 0);
+        lobby.add(lobbyLight);
+
+        const receptionLight = new THREE.PointLight(
+            0xffd49b, 22, 20
+        );
+
+        receptionLight.position.set(0, 4, -3);
+        lobby.add(receptionLight);
 
         this.interior.visible = false;
     },
@@ -717,7 +826,7 @@ const Game = {
         });
     },
 
-    // SWIMMING POOL
+    // POOL
 
     createPool() {
         this.box(
@@ -753,37 +862,43 @@ const Game = {
         sun.castShadow = true;
         sun.shadow.mapSize.set(1024, 1024);
         this.scene.add(sun);
-
-        const lobbyLight = new THREE.PointLight(
-            0xffd69a, 35, 25
-        );
-
-        lobbyLight.position.set(0, 6, 0);
-        this.interior.add(lobbyLight);
     },
 
     // CAMERA
 
     updateCamera() {
         if (this.interiorMode) {
-            this.camera.position.set(0, 5.2, 11.5);
-            this.camera.lookAt(0, 3.2, -2);
+            this.camera.fov = 55;
+
+            this.camera.position.set(
+                0, 8.5, 22
+            );
+
+            this.camera.lookAt(
+                0, 4.2, -1.5
+            );
+
+            this.camera.updateProjectionMatrix();
             return;
         }
 
+        this.camera.fov = 38;
+
         this.camera.position.set(
             Math.sin(this.rotation) * this.cameraDistance,
-            12 + this.cameraDistance * 0.25,
+            13 + this.cameraDistance * 0.25,
             Math.cos(this.rotation) * this.cameraDistance
         );
 
-        this.camera.lookAt(this.cameraTarget);
+        this.camera.lookAt(0, 10.5, 0);
+        this.camera.updateProjectionMatrix();
     },
 
-    // VIEW SWITCHER
+    // VIEW BUTTON
 
     createViewButton() {
-        const container = document.getElementById('game-canvas');
+        const container =
+            document.getElementById('game-canvas');
 
         const button = document.createElement('button');
 
@@ -806,6 +921,7 @@ const Game = {
 
         button.onclick = () => {
             this.toggleInterior();
+
             button.textContent = this.interiorMode
                 ? '🏨 Hotel Exterior'
                 : '🏛️ Enter Lobby';
@@ -817,11 +933,9 @@ const Game = {
     toggleInterior() {
         this.interiorMode = !this.interiorMode;
 
-        this.hotel.visible = !this.interiorMode;
         this.exterior.visible = !this.interiorMode;
         this.interior.visible = this.interiorMode;
 
-        this.cameraTarget.set(0, 3.2, 0);
         this.updateCamera();
     },
 
@@ -833,6 +947,8 @@ const Game = {
         canvas.style.touchAction = 'none';
 
         canvas.addEventListener('pointerdown', event => {
+            if (this.interiorMode) return;
+
             this.dragging = true;
             this.lastPointerX = event.clientX;
 
@@ -865,15 +981,16 @@ const Game = {
 
             this.cameraDistance = THREE.MathUtils.clamp(
                 this.cameraDistance + event.deltaY * 0.03,
-                29,
-                55
+                38,
+                65
             );
 
             this.updateCamera();
         }, { passive: false });
 
         window.addEventListener('resize', () => {
-            const container = document.getElementById('game-canvas');
+            const container =
+                document.getElementById('game-canvas');
 
             this.camera.aspect =
                 container.clientWidth / container.clientHeight;
@@ -898,18 +1015,19 @@ const Game = {
         );
     },
 
-    // USER INTERFACE
+    // UI
 
     updateUI() {
         const coins = document.getElementById('coins');
         const gems = document.getElementById('gems');
         const name = document.getElementById('hotel-name');
 
-        if (coins) coins.textContent =
-            this.coins.toLocaleString('en-IN');
+        if (coins) {
+            coins.textContent =
+                this.coins.toLocaleString('en-IN');
+        }
 
         if (gems) gems.textContent = this.gems;
-
         if (name) name.textContent = this.hotelName;
     },
 
@@ -969,7 +1087,7 @@ const Game = {
             .classList.add('hidden');
     },
 
-    // HOTEL MANAGEMENT
+    // MANAGEMENT
 
     upgradeRoom() {
         if (this.coins < 1000) {
@@ -1030,7 +1148,8 @@ const Game = {
     },
 
     loadGame() {
-        const saved = localStorage.getItem('hotelEmpireSave');
+        const saved =
+            localStorage.getItem('hotelEmpireSave');
 
         if (!saved) return;
 
