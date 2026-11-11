@@ -18,8 +18,17 @@ const Game = {
 
     rotation: 0.55,
     cameraDistance: 52,
+    exteriorPitch: 0.30,
+
+    interiorRotation: 0,
+    interiorDistance: 24,
+    interiorPitch: 0.18,
+
     dragging: false,
     lastPointerX: 0,
+    lastPointerY: 0,
+    activePointers: new Map(),
+    pinchDistance: 0,
 
     init() {
         this.loadGame();
@@ -390,9 +399,7 @@ const Game = {
         }
     },
 
-    // =====================================
     // GRAND LUXURY INTERIOR
-    // =====================================
 
     createInterior() {
         this.interior = new THREE.Group();
@@ -401,7 +408,7 @@ const Game = {
         const lobby = new THREE.Group();
         this.interior.add(lobby);
 
-        // Lobby floor - large marble
+        // Luxury marble floor
 
         this.box(
             lobby,
@@ -503,7 +510,7 @@ const Game = {
             );
         }
 
-        // Luxury reception counter - three sections
+        // Luxury reception counter
 
         for (const x of [-4.2, 0, 4.2]) {
             this.box(
@@ -545,7 +552,7 @@ const Game = {
             );
         }
 
-        // Reception decorative flower arrangements
+        // Reception flower arrangements
 
         for (const x of [-7, 7]) {
             this.cylinder(
@@ -687,7 +694,7 @@ const Game = {
             );
         }
 
-        // Crystal-style chandeliers
+        // Crystal chandeliers
 
         for (const x of [-6, 0, 6]) {
             this.cylinder(
@@ -704,7 +711,7 @@ const Game = {
                 0xf5d58b
             );
 
-            // Chandelier hanging crystals
+            // Chandelier crystals
 
             for (let i = 0; i < 6; i++) {
                 const angle = i * Math.PI / 3;
@@ -868,29 +875,36 @@ const Game = {
 
     updateCamera() {
         if (this.interiorMode) {
+            const target = new THREE.Vector3(0, 4.2, -1.5);
+            const distance = this.interiorDistance;
+
             this.camera.fov = 55;
-
             this.camera.position.set(
-                0, 8.5, 22
+                target.x + Math.sin(this.interiorRotation) *
+                    Math.cos(this.interiorPitch) * distance,
+                target.y + Math.sin(this.interiorPitch) * distance,
+                target.z + Math.cos(this.interiorRotation) *
+                    Math.cos(this.interiorPitch) * distance
             );
 
-            this.camera.lookAt(
-                0, 4.2, -1.5
-            );
-
+            this.camera.lookAt(target);
             this.camera.updateProjectionMatrix();
             return;
         }
 
-        this.camera.fov = 38;
+        const target = new THREE.Vector3(0, 10.5, 0);
+        const distance = this.cameraDistance;
 
+        this.camera.fov = 38;
         this.camera.position.set(
-            Math.sin(this.rotation) * this.cameraDistance,
-            13 + this.cameraDistance * 0.25,
-            Math.cos(this.rotation) * this.cameraDistance
+            target.x + Math.sin(this.rotation) *
+                Math.cos(this.exteriorPitch) * distance,
+            target.y + Math.sin(this.exteriorPitch) * distance,
+            target.z + Math.cos(this.rotation) *
+                Math.cos(this.exteriorPitch) * distance
         );
 
-        this.camera.lookAt(0, 10.5, 0);
+        this.camera.lookAt(target);
         this.camera.updateProjectionMatrix();
     },
 
@@ -928,6 +942,67 @@ const Game = {
         };
 
         container.appendChild(button);
+
+        // Zoom controls for both views
+
+        const zoomControls = document.createElement('div');
+
+        zoomControls.style.cssText = `
+            position:absolute;
+            right:14px;
+            top:205px;
+            z-index:15;
+            display:flex;
+            flex-direction:column;
+            gap:8px;
+        `;
+
+        const makeZoomButton = (label, amount, accessibleName) => {
+            const zoomButton = document.createElement('button');
+
+            zoomButton.textContent = label;
+            zoomButton.setAttribute('aria-label', accessibleName);
+
+            zoomButton.style.cssText = `
+                width:44px;
+                height:44px;
+                border:1px solid #c6a15e;
+                border-radius:12px;
+                background:#192a33;
+                color:#f1d49b;
+                font-size:25px;
+                font-weight:bold;
+                cursor:pointer;
+                touch-action:manipulation;
+            `;
+
+            zoomButton.onclick = () => this.changeZoom(amount);
+
+            zoomControls.appendChild(zoomButton);
+        };
+
+        makeZoomButton('+', -3, 'Zoom in');
+        makeZoomButton('−', 3, 'Zoom out');
+
+        container.appendChild(zoomControls);
+    },
+
+    changeZoom(amount) {
+        if (this.interiorMode) {
+            this.interiorDistance = THREE.MathUtils.clamp(
+                this.interiorDistance + amount,
+                12,
+                38
+            );
+        } else {
+            this.cameraDistance = THREE.MathUtils.clamp(
+                this.cameraDistance + amount,
+                30,
+                75
+            );
+        }
+
+        this.updateCamera();
     },
 
     toggleInterior() {
@@ -936,57 +1011,165 @@ const Game = {
         this.exterior.visible = !this.interiorMode;
         this.interior.visible = this.interiorMode;
 
+        this.activePointers.clear();
+        this.dragging = false;
+        this.pinchDistance = 0;
+
         this.updateCamera();
     },
 
     // CAMERA CONTROLS
+    // One finger: rotate the view.
+    // Two fingers: pinch to zoom.
+    // Mouse: drag to rotate and use the wheel to zoom.
 
     setupControls() {
         const canvas = this.renderer.domElement;
 
         canvas.style.touchAction = 'none';
 
+        const getPointerDistance = () => {
+            const points = Array.from(this.activePointers.values());
+
+            if (points.length < 2) return 0;
+
+            const dx = points[0].x - points[1].x;
+            const dy = points[0].y - points[1].y;
+
+            return Math.sqrt(dx * dx + dy * dy);
+        };
+
         canvas.addEventListener('pointerdown', event => {
-            if (this.interiorMode) return;
+            event.preventDefault();
 
-            this.dragging = true;
-            this.lastPointerX = event.clientX;
+            this.activePointers.set(event.pointerId, {
+                x: event.clientX,
+                y: event.clientY
+            });
 
-            canvas.setPointerCapture(event.pointerId);
+            try {
+                canvas.setPointerCapture(event.pointerId);
+            } catch (error) {
+                // Pointer capture may not be available in every browser.
+            }
+
+            if (this.activePointers.size === 1) {
+                this.dragging = true;
+                this.lastPointerX = event.clientX;
+                this.lastPointerY = event.clientY;
+            } else if (this.activePointers.size === 2) {
+                this.dragging = false;
+                this.pinchDistance = getPointerDistance();
+            }
         });
 
         canvas.addEventListener('pointermove', event => {
-            if (!this.dragging || this.interiorMode) return;
-
-            const deltaX = event.clientX - this.lastPointerX;
-
-            this.rotation += deltaX * 0.005;
-            this.lastPointerX = event.clientX;
-
-            this.updateCamera();
-        });
-
-        const stop = () => {
-            this.dragging = false;
-        };
-
-        canvas.addEventListener('pointerup', stop);
-        canvas.addEventListener('pointercancel', stop);
-        canvas.addEventListener('lostpointercapture', stop);
-
-        canvas.addEventListener('wheel', event => {
-            if (this.interiorMode) return;
+            if (!this.activePointers.has(event.pointerId)) return;
 
             event.preventDefault();
 
-            this.cameraDistance = THREE.MathUtils.clamp(
-                this.cameraDistance + event.deltaY * 0.03,
-                38,
-                65
-            );
+            const previous = this.activePointers.get(event.pointerId);
 
-            this.updateCamera();
+            this.activePointers.set(event.pointerId, {
+                x: event.clientX,
+                y: event.clientY
+            });
+
+            // Two-finger pinch zoom
+
+            if (this.activePointers.size >= 2) {
+                const currentDistance = getPointerDistance();
+
+                if (this.pinchDistance > 0 && currentDistance > 0) {
+                    const zoomRatio =
+                        this.pinchDistance / currentDistance;
+
+                    if (this.interiorMode) {
+                        this.interiorDistance =
+                            THREE.MathUtils.clamp(
+                                this.interiorDistance * zoomRatio,
+                                12,
+                                38
+                            );
+                    } else {
+                        this.cameraDistance =
+                            THREE.MathUtils.clamp(
+                                this.cameraDistance * zoomRatio,
+                                30,
+                                75
+                            );
+                    }
+
+                    this.updateCamera();
+                }
+
+                this.pinchDistance = currentDistance;
+                return;
+            }
+
+            // One-finger camera rotation
+
+            if (this.activePointers.size === 1) {
+                const deltaX = event.clientX - previous.x;
+                const deltaY = event.clientY - previous.y;
+
+                if (this.interiorMode) {
+                    this.interiorRotation -= deltaX * 0.006;
+
+                    this.interiorPitch =
+                        THREE.MathUtils.clamp(
+                            this.interiorPitch + deltaY * 0.004,
+                            -0.25,
+                            0.55
+                        );
+                } else {
+                    this.rotation -= deltaX * 0.006;
+
+                    this.exteriorPitch =
+                        THREE.MathUtils.clamp(
+                            this.exteriorPitch + deltaY * 0.004,
+                            0.05,
+                            0.65
+                        );
+                }
+
+                this.updateCamera();
+            }
+        });
+
+        const stopPointer = event => {
+            this.activePointers.delete(event.pointerId);
+
+            if (this.activePointers.size === 1) {
+                const remaining = Array.from(
+                    this.activePointers.values()
+                )[0];
+
+                this.lastPointerX = remaining.x;
+                this.lastPointerY = remaining.y;
+                this.dragging = true;
+                this.pinchDistance = 0;
+            } else {
+                this.dragging = false;
+                this.pinchDistance = 0;
+            }
+        };
+
+        canvas.addEventListener('pointerup', stopPointer);
+        canvas.addEventListener('pointercancel', stopPointer);
+        canvas.addEventListener('lostpointercapture', stopPointer);
+
+        // Mouse wheel zoom
+
+        canvas.addEventListener('wheel', event => {
+            event.preventDefault();
+
+            const amount = event.deltaY > 0 ? 2 : -2;
+
+            this.changeZoom(amount);
         }, { passive: false });
+
+        // Screen resizing
 
         window.addEventListener('resize', () => {
             const container =
