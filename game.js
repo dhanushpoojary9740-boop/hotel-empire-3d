@@ -15,11 +15,16 @@ const Game = {
     exterior: null,
     interior: null,
     interiorMode: false,
+    currentView: 'exterior',
+    lobby: null,
+    roomGroups: [],
+    roomTiers: [],
+    currentRoom: 0,
+    viewButton: null,
 
     rotation: 0.55,
     cameraDistance: 52,
     exteriorPitch: 0.30,
-
     interiorRotation: 0,
     interiorDistance: 14.5,
     interiorPitch: 0.04,
@@ -29,6 +34,11 @@ const Game = {
 
     init() {
         this.loadGame();
+        this.roomTiers = Array.from(
+            { length: this.rooms },
+            (_, i) => this.roomTiers[i] ?? 0
+        );
+
         this.createWorld();
         this.createHotel();
         this.createInterior();
@@ -447,10 +457,10 @@ const Game = {
         this.interior = new THREE.Group();
         this.scene.add(this.interior);
 
-        const lobby = new THREE.Group();
-        this.interior.add(lobby);
+        this.lobby = new THREE.Group();
+        this.interior.add(this.lobby);
 
-        // Large marble floor
+        const lobby = this.lobby;
 
         this.box(
             lobby, 0, 0, 0,
@@ -458,25 +468,19 @@ const Game = {
             { roughness: 0.2, metalness: 0.12 }
         );
 
-        // Marble tile grid
-
         for (let x = -12; x <= 12; x += 2) {
             this.box(
                 lobby, x, 0.16, 0,
-                0.025, 0.018, 25,
-                0xb7a68a
+                0.025, 0.018, 25, 0xb7a68a
             );
         }
 
         for (let z = -12; z <= 12; z += 2) {
             this.box(
                 lobby, 0, 0.16, z,
-                25, 0.018, 0.025,
-                0xb7a68a
+                25, 0.018, 0.025, 0xb7a68a
             );
         }
-
-        // Gold marble floor decorations
 
         for (const z of [-11.5, 11.5]) {
             this.box(
@@ -492,14 +496,10 @@ const Game = {
             );
         }
 
-        // Rear wall
-
         this.box(
             lobby, 0, 5, -12.8,
             26, 10, 0.4, 0x302a28
         );
-
-        // Side walls
 
         this.box(
             lobby, -13, 5, 0,
@@ -510,8 +510,6 @@ const Game = {
             lobby, 13, 5, 0,
             0.4, 10, 26, 0x39312d
         );
-
-        // Decorative rear wall panels
 
         for (let x = -11; x <= 11; x += 3.5) {
             this.box(
@@ -524,8 +522,6 @@ const Game = {
                 0.06, 8.4, 0.05, 0xd0ad6b
             );
         }
-
-        // Ceiling beams (open roof for better camera view)
 
         this.box(
             lobby, 0, 9.2, -5,
@@ -544,13 +540,9 @@ const Game = {
             );
         }
 
-        // Grand entrance columns
-
         for (const x of [-10, -5, 5, 10]) {
             this.addPillar(lobby, x, 8.5, 8.7);
         }
-
-        // Reception desk
 
         for (const x of [-7, 0, 7]) {
             this.box(
@@ -574,8 +566,6 @@ const Game = {
                 0.06, 1.3, 0.04, 0xe3bd75
             );
 
-            // Computer monitors
-
             this.box(
                 lobby, x, 2.38, -9.5,
                 0.85, 0.5, 0.12, 0x182b32
@@ -587,8 +577,6 @@ const Game = {
             );
         }
 
-        // Reception wall feature
-
         this.box(
             lobby, 0, 6.7, -12.5,
             7, 2.5, 0.15, 0xc4a06b
@@ -598,8 +586,6 @@ const Game = {
             lobby, 0, 6.7, -12.35,
             6.5, 2.05, 0.08, 0x49382d
         );
-
-        // Grand staircase on the left
 
         for (let i = 0; i < 12; i++) {
             const y = 0.25 + i * 0.36;
@@ -611,14 +597,10 @@ const Game = {
             );
         }
 
-        // Upper staircase landing
-
         this.box(
             lobby, -8.5, 4.7, 7,
             5.5, 0.3, 5, 0xc4b49c
         );
-
-        // Staircase golden railings
 
         for (let i = 0; i < 2; i++) {
             const z = -1 + i * 0.65;
@@ -639,16 +621,9 @@ const Game = {
             0.12, 0.12, 8.5, 0xd0ad6b
         );
 
-        // Right side luxury lounge
-
         this.addSofa(lobby, 8.5, -1.5, 5);
         this.addSofa(lobby, 8.5, 5, 5);
-
-        // Left side lounge
-
         this.addSofa(lobby, -2, 5.5, 4);
-
-        // Coffee tables
 
         for (const x of [-2, 8.5]) {
             this.box(
@@ -661,8 +636,6 @@ const Game = {
                 2.4, 0.04, 1.4, 0xd2b88b
             );
         }
-
-        // Elevator lobby
 
         for (const x of [-3, 3]) {
             this.box(
@@ -682,14 +655,10 @@ const Game = {
             );
         }
 
-        // Indoor garden
-
         this.addPlant(lobby, -11, 2, 1.3);
         this.addPlant(lobby, 11, 2, 1.3);
         this.addPlant(lobby, -11, -5, 1);
         this.addPlant(lobby, 11, -5, 1);
-
-        // Large decorative indoor fountain
 
         this.cylinder(
             lobby, 0, 0.3, 5.5,
@@ -711,13 +680,9 @@ const Game = {
             0.35, 0x6cc5d0
         );
 
-        // Crystal chandeliers
-
         this.addChandelier(lobby, -7, 8, 1, 1.2);
         this.addChandelier(lobby, 0, 8, 1, 1.4);
         this.addChandelier(lobby, 7, 8, 1, 1.2);
-
-        // Warm interior lights
 
         for (const x of [-9, -4, 4, 9]) {
             const light = new THREE.PointLight(
@@ -727,8 +692,6 @@ const Game = {
             light.position.set(x, 7, 0);
             lobby.add(light);
         }
-
-        // Restaurant entrance on the right
 
         this.box(
             lobby, 10.8, 2.5, -8,
@@ -741,14 +704,10 @@ const Game = {
             { metalness: 0.5 }
         );
 
-        // Restaurant signboard
-
         this.box(
             lobby, 10.8, 5.6, -7.8,
             4, 0.7, 0.25, 0xc49b5d
         );
-
-        // Entrance decorative rugs
 
         this.box(
             lobby, 0, 0.22, 9,
@@ -760,8 +719,6 @@ const Game = {
             7.7, 0.025, 2.7, 0xb39a7d
         );
 
-        // Extra ambient light
-
         const mainLight = new THREE.PointLight(
             0xffd9a6, 65, 38
         );
@@ -769,7 +726,198 @@ const Game = {
         mainLight.position.set(0, 8, 1);
         lobby.add(mainLight);
 
+        this.createRoomGroups();
+
         this.interior.visible = false;
+    },
+
+    // ROOM SYSTEM
+
+    createRoomGroups() {
+        this.roomGroups = [];
+
+        for (let i = 0; i < this.rooms; i++) {
+            const group = new THREE.Group();
+            group.visible = false;
+            group.userData.roomIndex = i;
+            this.interior.add(group);
+            this.roomGroups.push(group);
+            this.buildRoomInterior(group, i, this.roomTiers[i] || 0);
+        }
+    },
+
+    buildRoomInterior(parent, roomIndex, tier) {
+        while (parent.children.length) {
+            const child = parent.children[0];
+            parent.remove(child);
+
+            child.traverse(obj => {
+                if (obj.geometry) obj.geometry.dispose();
+
+                if (obj.material) {
+                    if (Array.isArray(obj.material)) {
+                        obj.material.forEach(m => m.dispose());
+                    } else {
+                        obj.material.dispose();
+                    }
+                }
+            });
+        }
+
+        const luxury = tier >= 3;
+        const premium = tier >= 2;
+        const comfort = tier >= 1;
+        const wall = luxury ? 0xeadfcf : 0xd8cbb6;
+        const wood = luxury ? 0x553321 : (premium ? 0x765039 : 0x987451);
+        const gold = 0xc6a15e;
+        const floor = luxury ? 0xd9d0c3 : 0xc9bda9;
+
+        this.box(parent, 0, 0, 0, 15, 0.25, 13, floor);
+        this.box(parent, 0, 4.1, -6.4, 15, 8.2, 0.25, wall);
+        this.box(parent, -7.4, 4.1, 0, 0.25, 8.2, 13, wall);
+        this.box(parent, 7.4, 4.1, 0, 0.25, 8.2, 13, wall);
+        this.box(parent, 0, 8.2, 0, 15, 0.18, 13, 0x3a2a22);
+
+        this.box(parent, 0, 5.1, -6.22, 4.2, 2.7, 0.08, 0x294f60, { metalness: 0.35, roughness: 0.2 });
+        this.box(parent, -2.2, 5.1, -6.12, 0.18, 3.1, 0.12, gold);
+        this.box(parent, 2.2, 5.1, -6.12, 0.18, 3.1, 0.12, gold);
+        this.box(parent, -2.55, 5.1, -6.05, 0.55, 3.4, 0x76513d);
+        this.box(parent, 2.55, 5.1, -6.05, 0.55, 3.4, 0x76513d);
+
+        this.box(parent, 0, 0.75, -2.1, 5.3, 0.45, 6.0, wood);
+        this.box(parent, 0, 1.15, -2.1, 5.1, 0.35, 5.8, 0xf0e8dc);
+        this.box(parent, 0, 1.42, -3.45, 5.15, 0.25, 2.5, luxury ? 0xf4eee5 : 0xe6dfd3);
+        this.box(parent, 0, 1.62, -4.45, 5.2, 2.4, 0.3, wood);
+
+        for (const x of [-1.25, 1.25]) {
+            this.box(parent, x, 1.55, -4.0, 1.35, 0.22, 0.9, 0xffffff);
+        }
+
+        this.box(parent, 0, 1.57, -1.85, 4.9, 0.16, 1.7, luxury ? 0xb99a79 : 0xc8b59d);
+
+        for (const x of [-3.25, 3.25]) {
+            this.box(parent, x, 0.8, -3.9, 1.15, 1.3, 1.15, wood);
+            this.box(parent, x, 1.48, -3.9, 1.25, 0.12, 1.25, gold);
+            this.cylinder(parent, x, 2.05, -3.9, 0.09, 0.9, gold);
+            this.sphere(parent, x, 2.55, -3.9, 0.36, 0xffe2a5);
+        }
+
+        this.box(parent, -5.85, 2.1, 1.4, 2.3, 4.1, 1.5, wood);
+        this.box(parent, -5.85, 2.1, 0.62, 2.05, 3.85, 0.08, luxury ? 0x6b4934 : 0x8a6948);
+        this.box(parent, 0, 1.1, -5.65, 3.3, 1.5, 0.5, wood);
+        this.box(parent, 0, 3.05, -5.85, 3.2, 1.65, 0.16, 0x101c23, { metalness: 0.3, roughness: 0.18 });
+        this.box(parent, 0, 3.05, -5.74, 2.95, 1.4, 0.035, 0x294b5a);
+
+        this.box(parent, 5.55, 1.25, -4.55, 2.8, 0.18, 1.3, wood);
+        this.box(parent, 5.55, 0.65, -4.55, 0.18, 1.2, 1.0, wood);
+        this.box(parent, 5.55, 1.9, -4.55, 1.3, 0.08, 0.7, gold);
+        this.box(parent, 5.55, 0.75, -2.9, 1.4, 0.2, 1.2, 0x554137);
+        this.box(parent, 5.55, 1.5, -2.35, 1.4, 1.4, 0.2, 0x765b48);
+
+        this.box(parent, 3.65, 2.0, 2.7, 0.16, 4.0, 6.4, wall);
+        this.box(parent, 5.45, 0.35, 4.7, 3.5, 0.15, 2.7, 0x8db5bd);
+        this.box(parent, 5.45, 1.9, 5.95, 3.5, 3.2, 0.12, 0x9fc6ce, { metalness: 0.25, roughness: 0.2 });
+        this.box(parent, 5.45, 1.9, 4.55, 3.5, 0.12, 0.12, gold);
+        this.box(parent, 5.45, 1.9, 3.2, 3.5, 0.12, 0.12, gold);
+        this.box(parent, 5.55, 1.1, 1.2, 2.1, 0.25, 1.1, 0xffffff);
+        this.box(parent, 5.55, 1.65, 1.2, 1.0, 0.85, 0.75, 0xe9e6df);
+        this.cylinder(parent, 5.55, 1.4, 1.2, 0.34, 0.15, 0xffffff);
+        this.box(parent, 5.45, 0.65, 3.0, 1.3, 0.25, 0.9, 0xffffff);
+
+        this.box(parent, 0, 0.17, 1.0, 7.5, 0.06, 3.2, luxury ? 0x8d604b : 0x9a8064);
+        this.box(parent, 0, 0.21, 1.0, 7.1, 0.025, 2.8, 0xcbb99d);
+        this.cylinder(parent, 0, 7.85, 0, 0.07, 0.55, gold);
+        this.sphere(parent, 0, 7.35, 0, 0.42, 0xffe0a0);
+        this.addPlant(parent, -5.8, 4.8, 0.8);
+
+        if (comfort) {
+            this.addSofa(parent, -4.8, 3.4, 3.5);
+            this.box(parent, 5.55, 0.7, -1.0, 1.2, 1.4, 1.0, 0x3d4142);
+            this.box(parent, 5.55, 1.42, -1.0, 1.25, 0.12, 1.05, gold);
+        }
+
+        if (premium) {
+            this.addSofa(parent, 0, 3.8, 3.0);
+            this.box(parent, 0, 0.75, 3.8, 2.4, 0.16, 1.4, 0x76513d);
+            this.box(parent, 0, 0.86, 3.8, 2.3, 0.05, 1.3, 0xc8a66c);
+            this.box(parent, -5.9, 4.7, -5.95, 2.5, 0.12, 0.12, gold);
+        }
+
+        if (luxury) {
+            this.box(parent, 5.45, 0.55, 4.7, 3.0, 0.25, 2.2, 0xf7f3eb);
+            this.box(parent, 5.45, 0.85, 4.7, 2.6, 0.18, 1.8, 0xb8dce0);
+            this.addChandelier(parent, 0, 7.0, 2.0, 0.75);
+            this.box(parent, -5.6, 1.3, 4.5, 2.8, 0.2, 1.5, 0xeee5d6);
+            this.box(parent, -5.6, 1.45, 4.5, 2.5, 0.06, 1.2, 0xc6a15e);
+        }
+
+        this.box(parent, -7.22, 3.4, -4.8, 0.08, 0.8, 1.2, gold);
+
+        const roomLight = new THREE.PointLight(
+            0xffd9a6,
+            luxury ? 42 : 28,
+            24
+        );
+
+        roomLight.position.set(0, 6.5, 1);
+        parent.add(roomLight);
+    },
+
+    openRoom(index) {
+        index = Math.max(0, Math.min(this.rooms - 1, Number(index) || 0));
+        this.currentRoom = index;
+
+        if (!this.roomGroups[index]) {
+            const group = new THREE.Group();
+            this.interior.add(group);
+            this.roomGroups[index] = group;
+            this.buildRoomInterior(group, index, this.roomTiers[index] || 0);
+        }
+
+        this.lobby.visible = false;
+        this.roomGroups.forEach((group, i) => group.visible = i === index);
+        this.interior.visible = true;
+        this.exterior.visible = false;
+        this.interiorMode = true;
+        this.currentView = 'room';
+        this.interiorRotation = 0;
+        this.interiorPitch = 0.02;
+        this.interiorDistance = 12;
+        this.activePointers.clear();
+        this.pinchDistance = 0;
+        this.updateCamera();
+        this.updateViewButton();
+        this.openMenu('rooms');
+    },
+
+    upgradeCurrentRoom() {
+        const tier = this.roomTiers[this.currentRoom] || 0;
+        const costs = [500, 1000, 2000, 3500];
+
+        if (tier >= 3) {
+            alert('This room is already fully upgraded to Luxury!');
+            return;
+        }
+
+        const cost = costs[tier];
+
+        if (this.coins < cost) {
+            alert(`Not enough coins! You need ${cost} coins for the next room upgrade.`);
+            return;
+        }
+
+        this.coins -= cost;
+        this.roomTiers[this.currentRoom] = tier + 1;
+
+        this.buildRoomInterior(
+            this.roomGroups[this.currentRoom],
+            this.currentRoom,
+            tier + 1
+        );
+
+        this.saveGame();
+        this.updateUI();
+        this.openMenu('rooms');
     },
 
     // GARDEN
@@ -836,22 +984,17 @@ const Game = {
 
     updateCamera() {
         if (this.interiorMode) {
-            const target = new THREE.Vector3(0, 3.5, -2.5);
-            const distance = this.interiorDistance;
+            const target = this.currentView === 'room'
+                ? new THREE.Vector3(0, 2.5, -0.5)
+                : new THREE.Vector3(0, 3.5, -2.5);
 
+            const distance = this.interiorDistance;
             this.camera.fov = 65;
 
             this.camera.position.set(
-                target.x +
-                    Math.sin(this.interiorRotation) *
-                    Math.cos(this.interiorPitch) * distance,
-
-                target.y +
-                    Math.sin(this.interiorPitch) * distance,
-
-                target.z +
-                    Math.cos(this.interiorRotation) *
-                    Math.cos(this.interiorPitch) * distance
+                target.x + Math.sin(this.interiorRotation) * Math.cos(this.interiorPitch) * distance,
+                target.y + Math.sin(this.interiorPitch) * distance,
+                target.z + Math.cos(this.interiorRotation) * Math.cos(this.interiorPitch) * distance
             );
 
             this.camera.lookAt(target);
@@ -884,7 +1027,7 @@ const Game = {
         const container = document.getElementById('game-canvas');
 
         const button = document.createElement('button');
-
+        this.viewButton = button;
         button.textContent = '🏛️ Enter Lobby';
 
         button.style.cssText = `
@@ -902,11 +1045,15 @@ const Game = {
         `;
 
         button.onclick = () => {
-            this.toggleInterior();
+            if (this.currentView === 'room') {
+                this.returnToLobby();
+            } else if (this.interiorMode) {
+                this.showExterior();
+            } else {
+                this.toggleInterior();
+            }
 
-            button.textContent = this.interiorMode
-                ? '🏨 Hotel Exterior'
-                : '🏛️ Enter Lobby';
+            this.updateViewButton();
         };
 
         container.appendChild(button);
@@ -925,7 +1072,6 @@ const Game = {
 
         const addButton = (label, amount) => {
             const b = document.createElement('button');
-
             b.textContent = label;
 
             b.style.cssText = `
@@ -945,7 +1091,6 @@ const Game = {
 
         addButton('+', -3);
         addButton('−', 3);
-
         container.appendChild(controls);
     },
 
@@ -953,8 +1098,8 @@ const Game = {
         if (this.interiorMode) {
             this.interiorDistance = THREE.MathUtils.clamp(
                 this.interiorDistance + amount,
-                7,
-                25
+                this.currentView === 'room' ? 4.5 : 7,
+                this.currentView === 'room' ? 18 : 25
             );
         } else {
             this.cameraDistance = THREE.MathUtils.clamp(
@@ -968,30 +1113,62 @@ const Game = {
     },
 
     toggleInterior() {
-        this.interiorMode = !this.interiorMode;
+        this.interiorMode = true;
+        this.currentView = 'lobby';
+        this.exterior.visible = false;
+        this.interior.visible = true;
+        this.lobby.visible = true;
+        this.roomGroups.forEach(group => group.visible = false);
 
-        this.exterior.visible = !this.interiorMode;
-        this.interior.visible = this.interiorMode;
-
-        // Always enter lobby facing the reception and lounge.
-
-        if (this.interiorMode) {
-            this.interiorRotation = 0;
-            this.interiorPitch = 0.04;
-            this.interiorDistance = 14.5;
-        }
+        this.interiorRotation = 0;
+        this.interiorPitch = 0.04;
+        this.interiorDistance = 14.5;
 
         this.activePointers.clear();
         this.pinchDistance = 0;
+        this.updateCamera();
+        this.updateViewButton();
+    },
+
+    showExterior() {
+        this.interiorMode = false;
+        this.currentView = 'exterior';
+        this.exterior.visible = true;
+        this.interior.visible = false;
+
+        this.activePointers.clear();
+        this.pinchDistance = 0;
+        this.updateCamera();
+        this.updateViewButton();
+    },
+
+    returnToLobby() {
+        this.currentView = 'lobby';
+        this.interiorMode = true;
+
+        this.roomGroups.forEach(group => group.visible = false);
+        this.lobby.visible = true;
+
+        this.interiorDistance = 14.5;
+        this.interiorRotation = 0;
+        this.interiorPitch = 0.04;
 
         this.updateCamera();
+        this.updateViewButton();
+    },
+
+    updateViewButton() {
+        if (!this.viewButton) return;
+
+        this.viewButton.textContent = this.currentView === 'room'
+            ? '↩️ Back to Lobby'
+            : (this.interiorMode ? '🏨 Hotel Exterior' : '🏛️ Enter Lobby');
     },
 
     // TOUCH AND MOUSE CONTROLS
 
     setupControls() {
         const canvas = this.renderer.domElement;
-
         canvas.style.touchAction = 'none';
 
         const getDistance = () => {
@@ -1044,13 +1221,15 @@ const Game = {
                         this.interiorDistance =
                             THREE.MathUtils.clamp(
                                 this.interiorDistance * ratio,
-                                7, 25
+                                this.currentView === 'room' ? 4.5 : 7,
+                                this.currentView === 'room' ? 18 : 25
                             );
                     } else {
                         this.cameraDistance =
                             THREE.MathUtils.clamp(
                                 this.cameraDistance * ratio,
-                                30, 75
+                                30,
+                                75
                             );
                     }
 
@@ -1070,14 +1249,16 @@ const Game = {
 
                     this.interiorPitch = THREE.MathUtils.clamp(
                         this.interiorPitch + dy * 0.004,
-                        -0.35, 0.65
+                        -0.35,
+                        0.65
                     );
                 } else {
                     this.rotation -= dx * 0.006;
 
                     this.exteriorPitch = THREE.MathUtils.clamp(
                         this.exteriorPitch + dy * 0.004,
-                        0.05, 0.65
+                        0.05,
+                        0.65
                     );
                 }
 
@@ -1087,7 +1268,6 @@ const Game = {
 
         const stopPointer = event => {
             this.activePointers.delete(event.pointerId);
-
             this.pinchDistance = 0;
         };
 
@@ -1119,7 +1299,6 @@ const Game = {
 
     animate() {
         requestAnimationFrame(() => this.animate());
-
         this.renderer.render(this.scene, this.camera);
     },
 
@@ -1145,12 +1324,27 @@ const Game = {
 
         panel.classList.remove('hidden');
 
+        const tierNames = ['Basic', 'Comfort', 'Premium', 'Luxury'];
+        const currentTier = this.roomTiers[this.currentRoom] || 0;
+        const costs = [500, 1000, 2000, 3500];
+
         const menus = {
             rooms: {
                 title: 'Hotel Rooms 🛏️',
                 content: `
                     <p>Total Rooms: ${this.rooms}</p>
-                    <p>Room income: 100 coins</p>
+                    <p>Select a room to explore and upgrade its facilities:</p>
+                    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:10px 0;">
+                        ${Array.from({ length: this.rooms }, (_, i) => `
+                            <button onclick="Game.openRoom(${i})" style="padding:9px 5px;">
+                                Room ${i + 1} · ${tierNames[this.roomTiers[i] || 0]}
+                            </button>
+                        `).join('')}
+                    </div>
+                    <p>Selected: Room ${this.currentRoom + 1} · ${tierNames[currentTier]}</p>
+                    <button onclick="Game.upgradeCurrentRoom()">
+                        ${currentTier >= 3 ? 'Maximum Upgrade Reached' : `Upgrade Room - ${costs[currentTier]} 🪙`}
+                    </button>
                     <button onclick="Game.upgradeRoom()">
                         Build New Room - 1000 🪙
                     </button>`
@@ -1204,6 +1398,19 @@ const Game = {
 
         this.coins -= 1000;
         this.rooms++;
+        this.roomTiers.push(0);
+
+        const newRoom = new THREE.Group();
+        newRoom.visible = false;
+        newRoom.userData.roomIndex = this.rooms - 1;
+        this.interior.add(newRoom);
+        this.roomGroups.push(newRoom);
+
+        this.buildRoomInterior(
+            newRoom,
+            this.rooms - 1,
+            0
+        );
 
         this.saveGame();
         this.updateUI();
@@ -1249,7 +1456,8 @@ const Game = {
                 level: this.level,
                 rooms: this.rooms,
                 staff: this.staff,
-                hotelName: this.hotelName
+                hotelName: this.hotelName,
+                roomTiers: this.roomTiers
             })
         );
     },
@@ -1267,6 +1475,9 @@ const Game = {
             this.level = data.level ?? 1;
             this.rooms = data.rooms ?? 10;
             this.staff = data.staff ?? 2;
+            this.roomTiers = Array.isArray(data.roomTiers)
+                ? data.roomTiers
+                : [];
 
             this.hotelName =
                 data.hotelName ?? 'Grand Palace Hotel';
