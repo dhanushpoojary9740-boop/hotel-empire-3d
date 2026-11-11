@@ -1,7 +1,6 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js';
 
 const Game = {
-
     coins: 5000,
     gems: 50,
     level: 1,
@@ -13,69 +12,105 @@ const Game = {
     camera: null,
     renderer: null,
     hotel: null,
+    interior: null,
+    interiorMode: false,
 
-    rotation: 0.65,
-    cameraDistance: 30,
-    cameraMinDistance: 19,
-    cameraMaxDistance: 45,
-
-    cameraTarget: new THREE.Vector3(0, 3.5, 0),
-
+    rotation: 0.55,
+    cameraDistance: 44,
     dragging: false,
     lastPointerX: 0,
 
+    cameraTarget: new THREE.Vector3(0, 9, 0),
+
     init() {
-
         this.loadGame();
-
         this.createWorld();
         this.createHotel();
+        this.createInterior();
         this.createGarden();
         this.createPool();
         this.setupLighting();
         this.setupControls();
-
+        this.createViewButton();
         this.updateCamera();
         this.updateUI();
         this.animate();
 
-        const loading =
-            document.getElementById('loading-screen');
+        const loading = document.getElementById('loading-screen');
 
-        setTimeout(() => {
-
-            loading.style.opacity = '0';
-
+        if (loading) {
             setTimeout(() => {
-                loading.style.display = 'none';
-            }, 500);
-
-        }, 700);
+                loading.style.opacity = '0';
+                setTimeout(() => {
+                    loading.style.display = 'none';
+                }, 500);
+            }, 700);
+        }
     },
 
-    // =================================
+    // MATERIAL AND BOX SYSTEM
+
+    material(color, options = {}) {
+        return new THREE.MeshStandardMaterial({
+            color,
+            roughness: options.roughness ?? 0.7,
+            metalness: options.metalness ?? 0
+        });
+    },
+
+    box(parent, x, y, z, w, h, d, color, options = {}) {
+        const mesh = new THREE.Mesh(
+            new THREE.BoxGeometry(w, h, d),
+            this.material(color, options)
+        );
+
+        mesh.position.set(x, y, z);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        parent.add(mesh);
+        return mesh;
+    },
+
+    cylinder(parent, x, y, z, radius, height, color) {
+        const mesh = new THREE.Mesh(
+            new THREE.CylinderGeometry(
+                radius, radius, height, 20
+            ),
+            this.material(color)
+        );
+
+        mesh.position.set(x, y, z);
+        mesh.castShadow = true;
+        parent.add(mesh);
+        return mesh;
+    },
+
+    sphere(parent, x, y, z, radius, color) {
+        const mesh = new THREE.Mesh(
+            new THREE.SphereGeometry(radius, 16, 12),
+            this.material(color)
+        );
+
+        mesh.position.set(x, y, z);
+        mesh.castShadow = true;
+        parent.add(mesh);
+        return mesh;
+    },
+
     // WORLD
-    // =================================
 
     createWorld() {
-
-        const container =
-            document.getElementById('game-canvas');
+        const container = document.getElementById('game-canvas');
 
         this.scene = new THREE.Scene();
-
-        this.scene.background =
-            new THREE.Color(0x9eb7c7);
-
-        this.scene.fog = new THREE.Fog(
-            0x9eb7c7, 35, 100
-        );
+        this.scene.background = new THREE.Color(0x9eb9c8);
+        this.scene.fog = new THREE.Fog(0x9eb9c8, 65, 150);
 
         this.camera = new THREE.PerspectiveCamera(
             38,
             container.clientWidth / container.clientHeight,
             0.1,
-            200
+            250
         );
 
         this.renderer = new THREE.WebGLRenderer({
@@ -93,607 +128,711 @@ const Game = {
         );
 
         this.renderer.shadowMap.enabled = true;
-
-        this.renderer.shadowMap.type =
-            THREE.PCFSoftShadowMap;
-
-        this.renderer.outputColorSpace =
-            THREE.SRGBColorSpace;
-
-        this.renderer.toneMapping =
-            THREE.ACESFilmicToneMapping;
-
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
         this.renderer.toneMappingExposure = 1.15;
 
         container.appendChild(this.renderer.domElement);
 
+        this.exterior = new THREE.Group();
+        this.scene.add(this.exterior);
+
         const ground = new THREE.Mesh(
-            new THREE.PlaneGeometry(100, 100),
-            new THREE.MeshStandardMaterial({
-                color: 0x526d4e,
-                roughness: 1
-            })
+            new THREE.PlaneGeometry(180, 180),
+            this.material(0x607c55)
         );
 
         ground.rotation.x = -Math.PI / 2;
-        ground.position.y = -0.15;
+        ground.position.y = -0.2;
         ground.receiveShadow = true;
+        this.exterior.add(ground);
 
-        this.scene.add(ground);
+        // Large hotel property platform
 
-        this.addWorldBox(
+        this.box(
+            this.exterior,
             0, 0.05, 0,
-            13, 0.35, 11,
-            0x777b7d
+            30, 0.5, 26,
+            0x898985
+        );
+
+        // Driveway
+
+        this.box(
+            this.exterior,
+            0, 0.32, 11,
+            23, 0.08, 3,
+            0x565c60
         );
     },
 
-    // =================================
-    // BOX CREATOR
-    // =================================
+    // HOTEL WINDOW
 
-    addBox(parent, x, y, z, w, h, d, color, options = {}) {
-
-        const mesh = new THREE.Mesh(
-            new THREE.BoxGeometry(w, h, d),
-            new THREE.MeshStandardMaterial({
-                color: color,
-                roughness: options.roughness ?? 0.75,
-                metalness: options.metalness ?? 0
-            })
+    addFrontWindow(parent, x, y, z, width = 1.15) {
+        this.box(
+            parent, x, y, z,
+            width, 1.25, 0.14,
+            0x98774d
         );
 
-        mesh.position.set(x, y, z);
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
+        this.box(
+            parent, x, y, z + 0.09,
+            width - 0.12, 1.13, 0.045,
+            0x28536a,
+            { metalness: 0.45, roughness: 0.2 }
+        );
 
-        parent.add(mesh);
+        this.box(
+            parent, x, y, z + 0.13,
+            0.045, 1.1, 0.035,
+            0xc5a267,
+            { metalness: 0.55 }
+        );
 
-        return mesh;
-    },
-
-    addWorldBox(x, y, z, w, h, d, color) {
-
-        return this.addBox(
-            this.scene,
-            x, y, z, w, h, d, color
+        this.box(
+            parent, x, y, z + 0.13,
+            width - 0.12, 0.045, 0.035,
+            0xc5a267,
+            { metalness: 0.55 }
         );
     },
 
-    // =================================
-    // WINDOW CREATOR
-    // =================================
+    addSideWindow(parent, x, y, z, side) {
+        this.box(
+            parent, x, y, z,
+            0.14, 1.25, 1.25,
+            0x98774d
+        );
 
-    addWindow(parent, x, y, z, w, h, depth, side) {
-
-        const glass = new THREE.MeshStandardMaterial({
-            color: 0x376c83,
-            metalness: 0.45,
-            roughness: 0.18
-        });
-
-        const gold = new THREE.MeshStandardMaterial({
-            color: 0xb58b50,
-            metalness: 0.55,
-            roughness: 0.35
-        });
-
-        if (side === 'front' || side === 'back') {
-
-            this.addBox(
-                parent,
-                x, y, z,
-                w, h, depth,
-                0x9d7545
-            );
-
-            this.addBox(
-                parent,
-                x, y, z + (side === 'front' ? 0.055 : -0.055),
-                w - 0.12, h - 0.12, 0.045,
-                0x376c83,
-                { metalness: 0.45, roughness: 0.18 }
-            );
-
-            // Window vertical divider
-
-            this.addBox(
-                parent,
-                x, y, z + (side === 'front' ? 0.09 : -0.09),
-                0.055, h - 0.12, 0.04,
-                0xb58b50,
-                { metalness: 0.55 }
-            );
-
-            // Window horizontal divider
-
-            this.addBox(
-                parent,
-                x, y, z + (side === 'front' ? 0.09 : -0.09),
-                w - 0.12, 0.045, 0.04,
-                0xb58b50,
-                { metalness: 0.55 }
-            );
-
-        } else {
-
-            this.addBox(
-                parent,
-                x, y, z,
-                depth, h, w,
-                0x9d7545
-            );
-
-            this.addBox(
-                parent,
-                x + (side === 'right' ? 0.055 : -0.055),
-                y, z,
-                0.045, h - 0.12, w - 0.12,
-                0x376c83,
-                { metalness: 0.45, roughness: 0.18 }
-            );
-
-            this.addBox(
-                parent,
-                x + (side === 'right' ? 0.09 : -0.09),
-                y, z,
-                0.04, h - 0.12, 0.055,
-                0xb58b50
-            );
-
-            this.addBox(
-                parent,
-                x + (side === 'right' ? 0.09 : -0.09),
-                y, z,
-                0.04, 0.045, w - 0.12,
-                0xb58b50
-            );
-        }
+        this.box(
+            parent,
+            x + side * 0.09,
+            y, z,
+            0.045, 1.13, 1.13,
+            0x28536a,
+            { metalness: 0.45, roughness: 0.2 }
+        );
     },
 
-    // =================================
     // BALCONY
-    // =================================
 
-    addBalcony(parent, x, y, z, width, side) {
+    addBalcony(parent, x, y, z) {
+        this.box(
+            parent, x, y - 0.55, z + 0.65,
+            1.85, 0.16, 1.4,
+            0xc8b99e
+        );
 
-        const gold = 0xc59a53;
-        const glass = 0x91bdc9;
+        this.box(
+            parent, x, y - 0.15, z + 1.3,
+            1.7, 0.7, 0.07,
+            0x8ebac6,
+            { metalness: 0.3, roughness: 0.2 }
+        );
 
-        if (side === 'front' || side === 'back') {
+        this.box(
+            parent, x, y + 0.22, z + 1.3,
+            1.85, 0.09, 0.12,
+            0xc6a05e,
+            { metalness: 0.65 }
+        );
 
-            const direction = side === 'front' ? 1 : -1;
-
-            this.addBox(
+        for (const offset of [-0.85, 0.85]) {
+            this.box(
                 parent,
-                x,
-                y - 0.65,
-                z + direction * 0.65,
-                width + 0.4,
-                0.16,
-                1.25,
-                0xc5b69e
-            );
-
-            // Glass railing
-
-            this.addBox(
-                parent,
-                x,
-                y - 0.12,
-                z + direction * 1.2,
-                width,
-                0.75,
-                0.07,
-                glass,
-                { metalness: 0.3, roughness: 0.25 }
-            );
-
-            this.addBox(
-                parent,
-                x,
-                y + 0.28,
-                z + direction * 1.2,
-                width + 0.08,
-                0.09,
-                0.12,
-                gold,
-                { metalness: 0.6 }
-            );
-
-            for (const offset of [-width / 2, width / 2]) {
-
-                this.addBox(
-                    parent,
-                    x + offset,
-                    y - 0.12,
-                    z + direction * 1.2,
-                    0.09,
-                    0.85,
-                    0.12,
-                    gold
-                );
-            }
-
-        } else {
-
-            const direction = side === 'right' ? 1 : -1;
-
-            this.addBox(
-                parent,
-                x + direction * 0.65,
-                y - 0.65,
-                z,
-                1.25,
-                0.16,
-                width + 0.4,
-                0xc5b69e
-            );
-
-            this.addBox(
-                parent,
-                x + direction * 1.2,
-                y - 0.12,
-                z,
-                0.07,
-                0.75,
-                width,
-                glass
-            );
-
-            this.addBox(
-                parent,
-                x + direction * 1.2,
-                y + 0.28,
-                z,
-                0.12,
-                0.09,
-                width + 0.08,
-                gold
+                x + offset,
+                y - 0.15,
+                z + 1.3,
+                0.08, 0.82, 0.12,
+                0xc6a05e
             );
         }
     },
 
-    // =================================
-    // HOTEL BUILDING
-    // =================================
+    // MASSIVE HOTEL
 
     createHotel() {
-
         this.hotel = new THREE.Group();
+        this.exterior.add(this.hotel);
 
-        this.scene.add(this.hotel);
+        const floors = 10;
+        const floorHeight = 2.25;
+        const height = floors * floorHeight;
 
-        // Main building
+        // Main tower
 
-        this.addBox(
+        this.box(
             this.hotel,
-            0, 4.25, 0,
-            8, 8, 5,
-            0xe7d6b7
+            0, height / 2 + 0.3, 0,
+            13, height, 8,
+            0xe8dcc4
         );
 
-        // Decorative floor lines
+        // Left and right hotel wings
 
-        for (let floor = 1; floor <= 3; floor++) {
-
-            this.addBox(
+        for (const side of [-1, 1]) {
+            this.box(
                 this.hotel,
-                0, floor * 2 + 0.25, 0,
-                8.08, 0.12, 5.08,
-                0x92704c
+                side * 8.2,
+                6.9,
+                -0.2,
+                4, 13.2, 7.5,
+                0xd9c9aa
             );
-        }
 
-        // Front and back windows
-
-        for (let floor = 0; floor < 4; floor++) {
-
-            const y = 1.3 + floor * 2;
-
-            for (let column = 0; column < 4; column++) {
-
-                const x = -3 + column * 2;
-
-                this.addWindow(
-                    this.hotel,
-                    x, y, 2.54,
-                    1.1, 1.15, 0.09,
-                    'front'
-                );
-
-                this.addWindow(
-                    this.hotel,
-                    x, y, -2.54,
-                    1.1, 1.15, 0.09,
-                    'back'
-                );
-
-                // Balconies on selected floors
-
-                if (floor === 1 || floor === 2) {
-
-                    this.addBalcony(
+            for (let floor = 0; floor < 6; floor++) {
+                for (let column = 0; column < 2; column++) {
+                    this.addFrontWindow(
                         this.hotel,
-                        x, y, 2.54,
-                        1.1, 'front'
+                        side * 8.2 + (column - 0.5) * 1.7,
+                        1.5 + floor * 2.15,
+                        3.6,
+                        0.95
                     );
                 }
             }
         }
 
-        // Left and right windows
+        // Floor separation lines
 
-        for (let floor = 0; floor < 4; floor++) {
+        for (let floor = 1; floor < floors; floor++) {
+            this.box(
+                this.hotel,
+                0,
+                floor * floorHeight + 0.3,
+                0,
+                13.15, 0.12, 8.15,
+                0xb38c56
+            );
+        }
 
-            const y = 1.3 + floor * 2;
+        // Front and back windows
 
-            for (let column = 0; column < 2; column++) {
+        for (let floor = 0; floor < floors; floor++) {
+            const y = 1.45 + floor * floorHeight;
 
-                const z = -1.2 + column * 2.4;
+            for (let column = 0; column < 6; column++) {
+                const x = -5.1 + column * 2.04;
 
-                this.addWindow(
-                    this.hotel,
-                    -4.04, y, z,
-                    1.1, 1.15, 0.09,
-                    'left'
+                this.addFrontWindow(
+                    this.hotel, x, y, 4.05, 1.2
                 );
 
-                this.addWindow(
-                    this.hotel,
-                    4.04, y, z,
-                    1.1, 1.15, 0.09,
-                    'right'
+                this.addFrontWindow(
+                    this.hotel, x, y, -4.05, 1.2
+                );
+
+                if (floor === 2 || floor === 5 || floor === 8) {
+                    this.addBalcony(
+                        this.hotel, x, y, 4.05
+                    );
+                }
+            }
+        }
+
+        // Side windows
+
+        for (let floor = 0; floor < floors; floor++) {
+            const y = 1.45 + floor * floorHeight;
+
+            for (let column = 0; column < 3; column++) {
+                const z = -2.5 + column * 2.5;
+
+                this.addSideWindow(
+                    this.hotel, 6.55, y, z, 1
+                );
+
+                this.addSideWindow(
+                    this.hotel, -6.55, y, z, -1
                 );
             }
         }
 
-        // Roof
+        // Luxury rooftop
 
-        this.addBox(
+        this.box(
             this.hotel,
-            0, 8.45, 0,
-            8.5, 0.4, 5.5,
-            0x59483c
+            0, height + 0.55, 0,
+            13.7, 0.55, 8.7,
+            0x574638
         );
 
-        // Roof decorative edge
-
-        this.addBox(
+        this.box(
             this.hotel,
-            0, 8.68, 0,
-            8.25, 0.12, 5.25,
-            0x806348
+            0, height + 0.86, 0,
+            13.4, 0.1, 8.4,
+            0xc29a61
         );
 
-        // Entrance
+        // Grand entrance structure
 
-        this.addBox(
+        this.box(
             this.hotel,
-            0, 1.15, 2.58,
-            2.1, 2.3, 0.25,
-            0x563b2b
+            0, 2.1, 4.35,
+            5.5, 3.8, 0.6,
+            0x61452f
         );
 
-        // Glass entrance door
-
-        this.addBox(
+        this.box(
             this.hotel,
-            0, 1.1, 2.75,
-            1.2, 2, 0.08,
-            0x80b7c7,
-            { metalness: 0.5, roughness: 0.2 }
+            0, 1.8, 4.7,
+            3.8, 3.2, 0.12,
+            0x76afbd,
+            { metalness: 0.45, roughness: 0.2 }
         );
 
-        // Golden entrance pillars
+        // Entrance gold pillars
 
-        for (const x of [-1.35, 1.35]) {
-
-            this.addBox(
+        for (const x of [-2.8, 2.8]) {
+            this.box(
                 this.hotel,
-                x, 1.5, 2.65,
-                0.18, 3, 0.18,
-                0xc59a53,
+                x, 2.2, 4.65,
+                0.3, 4.3, 0.35,
+                0xc7a05d,
                 { metalness: 0.6 }
             );
         }
 
-        // Entrance canopy
+        // Grand entrance canopy
 
-        this.addBox(
+        this.box(
             this.hotel,
-            0, 3.15, 3.1,
-            3.6, 0.25, 1.4,
-            0x59483c
+            0, 4.35, 5.15,
+            7.2, 0.35, 2.3,
+            0x9b7040
         );
 
-        this.addBox(
+        this.box(
             this.hotel,
-            0, 3.3, 3.1,
-            3.7, 0.08, 1.45,
-            0xc59a53,
-            { metalness: 0.5 }
+            0, 4.55, 5.15,
+            7.3, 0.1, 2.4,
+            0xd2ad6c,
+            { metalness: 0.4 }
         );
 
-        // Hotel name sign
+        // Entrance steps
 
-        this.addBox(
-            this.hotel,
-            0, 3.65, 2.7,
-            3, 0.45, 0.12,
-            0xc59a53,
-            { metalness: 0.5 }
-        );
-
-        // Steps
-
-        this.addBox(
-            this.hotel,
-            0, 0.35, 3.3,
-            3.5, 0.3, 1,
-            0xaaa6a0
-        );
-
-        this.addBox(
-            this.hotel,
-            0, 0.2, 4,
-            4.2, 0.2, 0.7,
-            0xbcb7af
-        );
-    },
-
-    // =================================
-    // GARDEN
-    // =================================
-
-    createGarden() {
-
-        const positions = [
-            [-6, 4],
-            [6, 4],
-            [-6, -4],
-            [6, -4],
-            [-5, -7],
-            [5, -7]
-        ];
-
-        positions.forEach(([x, z]) => {
-
-            const trunk = new THREE.Mesh(
-                new THREE.CylinderGeometry(
-                    0.15, 0.22, 1.8, 8
-                ),
-                new THREE.MeshStandardMaterial({
-                    color: 0x68452d
-                })
+        for (let i = 0; i < 3; i++) {
+            this.box(
+                this.hotel,
+                0,
+                0.35 + i * 0.12,
+                5.6 + i * 0.7,
+                7 + i * 0.5,
+                0.25,
+                0.8,
+                0xd0c5b2
             );
+        }
 
-            trunk.position.set(x, 0.9, z);
-            trunk.castShadow = true;
+        // Side entrance pillars
 
-            this.scene.add(trunk);
-
-            const leaves = new THREE.Mesh(
-                new THREE.SphereGeometry(1.15, 10, 8),
-                new THREE.MeshStandardMaterial({
-                    color: 0x356d3c
-                })
-            );
-
-            leaves.position.set(x, 2.4, z);
-            leaves.scale.y = 1.25;
-            leaves.castShadow = true;
-
-            this.scene.add(leaves);
-        });
-
-        this.addWorldBox(
-            -5, 0.04, 0,
-            2, 0.1, 5,
-            0x66804b
-        );
-
-        this.addWorldBox(
-            5, 0.04, 0,
-            2, 0.1, 5,
-            0x66804b
-        );
-    },
-
-    // =================================
-    // SWIMMING POOL
-    // =================================
-
-    createPool() {
-
-        this.addWorldBox(
-            -4.3, 0.16, -5.3,
-            4.2, 0.25, 3.2,
-            0xe5d8c0
-        );
-
-        const water = new THREE.Mesh(
-            new THREE.BoxGeometry(3.8, 0.08, 2.8),
-            new THREE.MeshStandardMaterial({
-                color: 0x27a8c5,
-                metalness: 0.3,
-                roughness: 0.2
-            })
-        );
-
-        water.position.set(-4.3, 0.31, -5.3);
-
-        this.scene.add(water);
-
-        for (let i = 0; i < 2; i++) {
-
-            this.addWorldBox(
-                -7 + i * 1.2,
-                0.35,
-                -2.7,
-                0.8, 0.15, 1.5,
-                0xd9c59f
+        for (const x of [-5.5, 5.5]) {
+            this.cylinder(
+                this.hotel,
+                x, 2.5, 4.7,
+                0.25, 4.5,
+                0xe0d4bd
             );
         }
     },
 
-    // =================================
-    // LIGHTING
-    // =================================
+    // LUXURY LOBBY INTERIOR
 
-    setupLighting() {
+    createInterior() {
+        this.interior = new THREE.Group();
+        this.scene.add(this.interior);
 
-        const ambient = new THREE.HemisphereLight(
-            0xffffff,
-            0x65704f,
-            2
+        // Lobby dimensions
+
+        const width = 15;
+        const depth = 12;
+        const height = 8;
+
+        // Marble floor
+
+        this.box(
+            this.interior,
+            0, 0, 0,
+            width, 0.25, depth,
+            0xd8d0c2,
+            { roughness: 0.2, metalness: 0.12 }
         );
 
-        this.scene.add(ambient);
+        // Gold floor border
 
-        const sunlight = new THREE.DirectionalLight(
-            0xffe4b5,
-            3
+        this.box(
+            this.interior,
+            0, 0.14, -5.65,
+            14.5, 0.06, 0.12,
+            0xc5a15e,
+            { metalness: 0.6 }
         );
 
-        sunlight.position.set(10, 18, 10);
-        sunlight.castShadow = true;
+        // Back and side walls
 
-        sunlight.shadow.mapSize.set(1024, 1024);
+        this.box(
+            this.interior,
+            0, height / 2, -6,
+            width, height, 0.3,
+            0x302b2a
+        );
 
-        sunlight.shadow.camera.left = -20;
-        sunlight.shadow.camera.right = 20;
-        sunlight.shadow.camera.top = 20;
-        sunlight.shadow.camera.bottom = -20;
+        this.box(
+            this.interior,
+            -7.5, height / 2, 0,
+            0.3, height, depth,
+            0x39312d
+        );
 
-        this.scene.add(sunlight);
+        this.box(
+            this.interior,
+            7.5, height / 2, 0,
+            0.3, height, depth,
+            0x39312d
+        );
+
+        // Decorative wall panels
+
+        for (let x = -5; x <= 5; x += 2.5) {
+            this.box(
+                this.interior,
+                x, 3.8, -5.78,
+                1.8, 5.5, 0.08,
+                0x614936
+            );
+
+            this.box(
+                this.interior,
+                x, 3.8, -5.7,
+                0.06, 5.3, 0.05,
+                0xd0ad6b,
+                { metalness: 0.5 }
+            );
+        }
+
+        // Reception desk
+
+        this.box(
+            this.interior,
+            0, 1.1, -3.8,
+            6.5, 1.8, 1.3,
+            0x50372c
+        );
+
+        this.box(
+            this.interior,
+            0, 2.05, -3.8,
+            6.7, 0.15, 1.45,
+            0xc9a362,
+            { metalness: 0.55 }
+        );
+
+        // Reception front panel
+
+        this.box(
+            this.interior,
+            0, 1.1, -3.1,
+            5.8, 1.25, 0.08,
+            0x94734c
+        );
+
+        // Gold reception details
+
+        for (const x of [-2.7, 2.7]) {
+            this.box(
+                this.interior,
+                x, 1.1, -3.03,
+                0.08, 1.3, 0.08,
+                0xe3bd75
+            );
+        }
+
+        // Reception computers
+
+        for (const x of [-1.7, 1.7]) {
+            this.box(
+                this.interior,
+                x, 2.3, -3.8,
+                0.8, 0.08, 0.55,
+                0x202b30
+            );
+        }
+
+        // Luxury sofas
+
+        for (const x of [-4.5, 4.5]) {
+            this.box(
+                this.interior,
+                x, 0.75, 1.2,
+                3.2, 0.55, 1.25,
+                0xb58d70
+            );
+
+            this.box(
+                this.interior,
+                x, 1.35, 1.55,
+                3.2, 0.9, 0.35,
+                0x8f6a56
+            );
+
+            for (const offset of [-1.35, 1.35]) {
+                this.box(
+                    this.interior,
+                    x + offset, 1.1, 1.2,
+                    0.35, 0.85, 1.3,
+                    0x765747
+                );
+            }
+        }
+
+        // Coffee tables
+
+        this.box(
+            this.interior,
+            0, 0.7, 1.2,
+            2.5, 0.15, 1.2,
+            0x9c754d,
+            { metalness: 0.25 }
+        );
+
+        // Decorative columns
+
+        for (const x of [-6, -3, 3, 6]) {
+            this.cylinder(
+                this.interior,
+                x, 3.8, 4.5,
+                0.3, 7.5,
+                0xcbb99b
+            );
+
+            this.cylinder(
+                this.interior,
+                x, 7.55, 4.5,
+                0.48, 0.25,
+                0xc5a15e
+            );
+
+            this.cylinder(
+                this.interior,
+                x, 0.25, 4.5,
+                0.48, 0.25,
+                0xc5a15e
+            );
+        }
+
+        // Elevators
+
+        for (const x of [-5, 5]) {
+            this.box(
+                this.interior,
+                x, 2.3, -5.55,
+                2, 4.4, 0.15,
+                0x9b9d9b,
+                { metalness: 0.65 }
+            );
+
+            this.box(
+                this.interior,
+                x, 2.3, -5.43,
+                1.7, 4.1, 0.06,
+                0x42616c,
+                { metalness: 0.5 }
+            );
+
+            this.box(
+                this.interior,
+                x, 4.6, -5.35,
+                0.7, 0.12, 0.06,
+                0xc7a15e
+            );
+        }
+
+        // Chandelier ceiling fixtures
+
+        for (const x of [-4, 0, 4]) {
+            this.cylinder(
+                this.interior,
+                x, 7.7, -0.5,
+                0.045, 0.5,
+                0xc5a15e
+            );
+
+            this.sphere(
+                this.interior,
+                x, 7.35, -0.5,
+                0.38,
+                0xf5d58b
+            );
+        }
+
+        // Indoor plants
+
+        for (const x of [-6.5, 6.5]) {
+            this.cylinder(
+                this.interior,
+                x, 0.5, 3,
+                0.55, 1,
+                0x76523a
+            );
+
+            this.sphere(
+                this.interior,
+                x, 1.8, 3,
+                0.85,
+                0x397348
+            );
+        }
+
+        this.interior.visible = false;
     },
 
-    // =================================
+    // GARDEN
+
+    createGarden() {
+        const positions = [
+            [-12, 7], [12, 7],
+            [-12, -7], [12, -7],
+            [-10, 12], [10, 12]
+        ];
+
+        positions.forEach(([x, z]) => {
+            this.cylinder(
+                this.exterior,
+                x, 1, z,
+                0.2, 2,
+                0x68452d
+            );
+
+            const tree = new THREE.Mesh(
+                new THREE.SphereGeometry(1.4, 16, 12),
+                this.material(0x397445)
+            );
+
+            tree.position.set(x, 2.8, z);
+            tree.scale.y = 1.3;
+            tree.castShadow = true;
+            this.exterior.add(tree);
+        });
+    },
+
+    // SWIMMING POOL
+
+    createPool() {
+        this.box(
+            this.exterior,
+            -10, 0.35, -7,
+            6, 0.3, 5,
+            0xe1d5bd
+        );
+
+        this.box(
+            this.exterior,
+            -10, 0.53, -7,
+            5.6, 0.08, 4.6,
+            0x26a9c5,
+            { metalness: 0.3, roughness: 0.2 }
+        );
+    },
+
+    // LIGHTING
+
+    setupLighting() {
+        this.scene.add(
+            new THREE.HemisphereLight(
+                0xffffff, 0x66704e, 2
+            )
+        );
+
+        const sun = new THREE.DirectionalLight(
+            0xffe5bd, 3
+        );
+
+        sun.position.set(15, 25, 15);
+        sun.castShadow = true;
+        sun.shadow.mapSize.set(1024, 1024);
+        this.scene.add(sun);
+
+        const lobbyLight = new THREE.PointLight(
+            0xffd69a, 35, 25
+        );
+
+        lobbyLight.position.set(0, 6, 0);
+        this.interior.add(lobbyLight);
+    },
+
     // CAMERA
-    // =================================
 
     updateCamera() {
-
-        const distance = this.cameraDistance;
+        if (this.interiorMode) {
+            this.camera.position.set(0, 5.2, 11.5);
+            this.camera.lookAt(0, 3.2, -2);
+            return;
+        }
 
         this.camera.position.set(
-            Math.sin(this.rotation) * distance,
-            3.5 + distance * 0.38,
-            Math.cos(this.rotation) * distance
+            Math.sin(this.rotation) * this.cameraDistance,
+            12 + this.cameraDistance * 0.25,
+            Math.cos(this.rotation) * this.cameraDistance
         );
 
         this.camera.lookAt(this.cameraTarget);
     },
 
-    setupControls() {
+    // VIEW SWITCHER
 
+    createViewButton() {
+        const container = document.getElementById('game-canvas');
+
+        const button = document.createElement('button');
+
+        button.textContent = '🏛️ Enter Lobby';
+
+        button.style.cssText = `
+            position:absolute;
+            right:14px;
+            top:145px;
+            z-index:15;
+            padding:13px 16px;
+            border:1px solid #c6a15e;
+            border-radius:12px;
+            background:#192a33;
+            color:#f1d49b;
+            font-size:13px;
+            font-weight:bold;
+            cursor:pointer;
+        `;
+
+        button.onclick = () => {
+            this.toggleInterior();
+            button.textContent = this.interiorMode
+                ? '🏨 Hotel Exterior'
+                : '🏛️ Enter Lobby';
+        };
+
+        container.appendChild(button);
+    },
+
+    toggleInterior() {
+        this.interiorMode = !this.interiorMode;
+
+        this.hotel.visible = !this.interiorMode;
+        this.exterior.visible = !this.interiorMode;
+        this.interior.visible = this.interiorMode;
+
+        this.cameraTarget.set(0, 3.2, 0);
+        this.updateCamera();
+    },
+
+    // CAMERA CONTROLS
+
+    setupControls() {
         const canvas = this.renderer.domElement;
 
         canvas.style.touchAction = 'none';
 
         canvas.addEventListener('pointerdown', event => {
-
             this.dragging = true;
             this.lastPointerX = event.clientX;
 
@@ -701,51 +840,43 @@ const Game = {
         });
 
         canvas.addEventListener('pointermove', event => {
+            if (!this.dragging || this.interiorMode) return;
 
-            if (!this.dragging) return;
+            const deltaX = event.clientX - this.lastPointerX;
 
-            const deltaX =
-                event.clientX - this.lastPointerX;
-
-            this.rotation += deltaX * 0.006;
-
+            this.rotation += deltaX * 0.005;
             this.lastPointerX = event.clientX;
 
             this.updateCamera();
         });
 
-        const stopDragging = () => {
+        const stop = () => {
             this.dragging = false;
         };
 
-        canvas.addEventListener('pointerup', stopDragging);
-        canvas.addEventListener('pointercancel', stopDragging);
-        canvas.addEventListener('lostpointercapture', stopDragging);
+        canvas.addEventListener('pointerup', stop);
+        canvas.addEventListener('pointercancel', stop);
+        canvas.addEventListener('lostpointercapture', stop);
 
         canvas.addEventListener('wheel', event => {
+            if (this.interiorMode) return;
 
             event.preventDefault();
 
-            this.cameraDistance += event.deltaY * 0.025;
-
             this.cameraDistance = THREE.MathUtils.clamp(
-                this.cameraDistance,
-                this.cameraMinDistance,
-                this.cameraMaxDistance
+                this.cameraDistance + event.deltaY * 0.03,
+                29,
+                55
             );
 
             this.updateCamera();
-
         }, { passive: false });
 
         window.addEventListener('resize', () => {
-
-            const container =
-                document.getElementById('game-canvas');
+            const container = document.getElementById('game-canvas');
 
             this.camera.aspect =
-                container.clientWidth /
-                container.clientHeight;
+                container.clientWidth / container.clientHeight;
 
             this.camera.updateProjectionMatrix();
 
@@ -756,12 +887,9 @@ const Game = {
         });
     },
 
-    // =================================
     // ANIMATION
-    // =================================
 
     animate() {
-
         requestAnimationFrame(() => this.animate());
 
         this.renderer.render(
@@ -770,37 +898,29 @@ const Game = {
         );
     },
 
-    // =================================
-    // UI
-    // =================================
+    // USER INTERFACE
 
     updateUI() {
+        const coins = document.getElementById('coins');
+        const gems = document.getElementById('gems');
+        const name = document.getElementById('hotel-name');
 
-        document.getElementById('coins').textContent =
+        if (coins) coins.textContent =
             this.coins.toLocaleString('en-IN');
 
-        document.getElementById('gems').textContent =
-            this.gems;
+        if (gems) gems.textContent = this.gems;
 
-        document.getElementById('hotel-name').textContent =
-            this.hotelName;
+        if (name) name.textContent = this.hotelName;
     },
 
     openMenu(type) {
-
-        const panel =
-            document.getElementById('menu-panel');
-
-        const title =
-            document.getElementById('menu-title');
-
-        const content =
-            document.getElementById('menu-content');
+        const panel = document.getElementById('menu-panel');
+        const title = document.getElementById('menu-title');
+        const content = document.getElementById('menu-content');
 
         panel.classList.remove('hidden');
 
         const menus = {
-
             rooms: {
                 title: 'Hotel Rooms 🛏️',
                 content: `
@@ -808,8 +928,7 @@ const Game = {
                     <p>Room income: 100 coins</p>
                     <button onclick="Game.upgradeRoom()">
                         Build New Room - 1000 🪙
-                    </button>
-                `
+                    </button>`
             },
 
             staff: {
@@ -819,8 +938,7 @@ const Game = {
                     <p>Manage your hotel employees.</p>
                     <button onclick="Game.hireStaff()">
                         Hire Employee - 500 🪙
-                    </button>
-                `
+                    </button>`
             },
 
             upgrade: {
@@ -830,8 +948,7 @@ const Game = {
                     <p>Improve your hotel business.</p>
                     <button onclick="Game.upgradeHotel()">
                         Upgrade Hotel - 2000 🪙
-                    </button>
-                `
+                    </button>`
             },
 
             shop: {
@@ -839,8 +956,7 @@ const Game = {
                 content: `
                     <p>Coins: ${this.coins}</p>
                     <p>Gems: ${this.gems}</p>
-                    <p>Premium shop will be developed later.</p>
-                `
+                    <p>Premium shop will be developed later.</p>`
             }
         };
 
@@ -849,17 +965,13 @@ const Game = {
     },
 
     closeMenu() {
-
         document.getElementById('menu-panel')
             .classList.add('hidden');
     },
 
-    // =================================
-    // BUSINESS
-    // =================================
+    // HOTEL MANAGEMENT
 
     upgradeRoom() {
-
         if (this.coins < 1000) {
             alert('Not enough coins!');
             return;
@@ -874,7 +986,6 @@ const Game = {
     },
 
     hireStaff() {
-
         if (this.coins < 500) {
             alert('Not enough coins!');
             return;
@@ -889,7 +1000,6 @@ const Game = {
     },
 
     upgradeHotel() {
-
         if (this.coins < 2000) {
             alert('Not enough coins!');
             return;
@@ -903,36 +1013,28 @@ const Game = {
         this.openMenu('upgrade');
     },
 
-    // =================================
     // SAVE SYSTEM
-    // =================================
 
     saveGame() {
-
-        const data = {
-            coins: this.coins,
-            gems: this.gems,
-            level: this.level,
-            rooms: this.rooms,
-            staff: this.staff,
-            hotelName: this.hotelName
-        };
-
         localStorage.setItem(
             'hotelEmpireSave',
-            JSON.stringify(data)
+            JSON.stringify({
+                coins: this.coins,
+                gems: this.gems,
+                level: this.level,
+                rooms: this.rooms,
+                staff: this.staff,
+                hotelName: this.hotelName
+            })
         );
     },
 
     loadGame() {
-
-        const saved =
-            localStorage.getItem('hotelEmpireSave');
+        const saved = localStorage.getItem('hotelEmpireSave');
 
         if (!saved) return;
 
         try {
-
             const data = JSON.parse(saved);
 
             this.coins = data.coins ?? 5000;
@@ -945,13 +1047,10 @@ const Game = {
                 data.hotelName ?? 'Grand Palace Hotel';
 
         } catch (error) {
-
             console.error('Save data error:', error);
         }
     }
-
 };
 
 window.Game = Game;
-
 Game.init();
